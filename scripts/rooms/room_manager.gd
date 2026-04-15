@@ -25,7 +25,7 @@ func start(player_node: CharacterBody2D, world_node: Node):
 
 func load_random_room():
 	var definition
-	if completed_rooms >= BOSS_ROOM_INTERVAL:
+	if (completed_rooms + 1) % BOSS_ROOM_INTERVAL == 0:
 		current_def_index = -1
 		definition = BOSS_ROOM_TYPE.new()
 	else:
@@ -94,9 +94,6 @@ func on_enemy_died():
 			loading = true
 			await get_tree().create_timer(1).timeout
 			print("Load the upgrades!")
-			if current_def_index == -1:
-				completed_rooms = 0
-		else:
 			completed_rooms += 1
 		call_deferred("load_upgrades")
 		loading = false
