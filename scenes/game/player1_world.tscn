@@ -1,9 +1,9 @@
 [gd_scene format=3 uid="uid://h8gr5xyecue0"]
 
-[ext_resource type="Script" uid="uid://cmki5teyn8yyf" path="res://scripts/world.gd" id="1_t8rks"]
+[ext_resource type="Script" uid="uid://cmki5teyn8yyf" path="res://scripts/game/world.gd" id="1_t8rks"]
 [ext_resource type="PackedScene" uid="uid://bkspfj7khngri" path="res://scenes/player/Player.tscn" id="3_24278"]
 [ext_resource type="PackedScene" uid="uid://dtc6ki22p0fdp" path="res://scenes/rooms/room_manager.tscn" id="4_f2ckb"]
-[ext_resource type="Script" uid="uid://byc08px73w4v0" path="res://scripts/camera_2d.gd" id="5_t8f3a"]
+[ext_resource type="Script" uid="uid://byc08px73w4v0" path="res://scripts/player/camera_2d.gd" id="5_t8f3a"]
 
 [node name="Player1_World" type="Node2D" unique_id=1329128313]
 script = ExtResource("1_t8rks")

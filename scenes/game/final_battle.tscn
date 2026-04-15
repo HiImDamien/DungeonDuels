@@ -1,9 +1,9 @@
 [gd_scene format=3]
 
-[ext_resource type="Script" path="res://scripts/final_battle.gd" id="1_fb"]
-[ext_resource type="PackedScene" uid="uid://d3jct2cpuluq3" path="res://scenes/hud.tscn" id="2_fb"]
-[ext_resource type="PackedScene" uid="uid://dct03i3upwvd2" path="res://scenes/final_battle_room.tscn" id="3_fb"]
-[ext_resource type="Script" uid="uid://byc08px73w4v0" path="res://scripts/camera_2d.gd" id="4_fb"]
+[ext_resource type="Script" path="res://scripts/game/final_battle.gd" id="1_fb"]
+[ext_resource type="PackedScene" uid="uid://d3jct2cpuluq3" path="res://scenes/ui/hud.tscn" id="2_fb"]
+[ext_resource type="PackedScene" uid="uid://dct03i3upwvd2" path="res://scenes/game/final_battle_room.tscn" id="3_fb"]
+[ext_resource type="Script" uid="uid://byc08px73w4v0" path="res://scripts/player/camera_2d.gd" id="4_fb"]
 
 [node name="FinalBattle" type="Control"]
 clip_contents = true

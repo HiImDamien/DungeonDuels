@@ -1,6 +1,8 @@
 extends Control
 
 func _ready() -> void:
+	var overlay := preload("res://scripts/ui/grace_overlay.gd").new()
+	add_child(overlay)
 	GameState.start_match_timer()
 	GameState.start_grace_period()
 	GameState.timer_expired.connect(_on_timer_expired, CONNECT_ONE_SHOT)
@@ -23,4 +25,4 @@ func _on_timer_expired() -> void:
 	if p1 and p2:
 		GameState.save_player_stats(p1, p2)
 
-	get_tree().change_scene_to_file("res://scenes/final_battle.tscn")
+	get_tree().change_scene_to_file("res://scenes/game/final_battle.tscn")

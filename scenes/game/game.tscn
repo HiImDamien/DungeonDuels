@@ -1,8 +1,8 @@
 [gd_scene format=3 uid="uid://dmftwo57c3005"]
 
-[ext_resource type="PackedScene" uid="uid://h8gr5xyecue0" path="res://scenes/player1_world.tscn" id="1_uwrxv"]
-[ext_resource type="PackedScene" uid="uid://d3jct2cpuluq3" path="res://scenes/hud.tscn" id="2_lnu2h"]
-[ext_resource type="PackedScene" uid="uid://bsw0kg07gk5tx" path="res://scenes/player2_world.tscn" id="2_yqjtg"]
+[ext_resource type="PackedScene" uid="uid://h8gr5xyecue0" path="res://scenes/game/player1_world.tscn" id="1_uwrxv"]
+[ext_resource type="PackedScene" uid="uid://d3jct2cpuluq3" path="res://scenes/ui/hud.tscn" id="2_lnu2h"]
+[ext_resource type="PackedScene" uid="uid://bsw0kg07gk5tx" path="res://scenes/game/player2_world.tscn" id="2_yqjtg"]
 [ext_resource type="Script" uid="uid://bpffspj3ow0b" path="res://scripts/game/game.gd" id="4_game1"]
 
 [node name="Game" type="Control" unique_id=698839627]

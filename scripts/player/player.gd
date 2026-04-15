@@ -12,7 +12,10 @@ var last_aim = Vector2.RIGHT
 const SPEED = 75.0
 const INVINCIBLE_TIME = 3
 const STARTING_MAX_HEALTH = 3
-var max_health: int = STARTING_MAX_HEALTH
+var max_health: int = STARTING_MAX_HEALTH:
+	set(value):
+		max_health = value
+		stats_changed.emit(health, max_health, kills)
 
 var state: State = State.ALIVE
 
@@ -147,15 +150,10 @@ func player_hit(attacker = null) -> void:
 		invincible = true
 
 func die() -> void:
-	# Permanent elimination: final battle only, and only when the last heart
-	# is lost (max_health == 1 means there is nowhere left to fall).
-	var is_final_death := (
-		GameState.phase == GameState.Phase.FINAL_BATTLE
-		and max_health == 1
-	)
+	# In the final battle, any death is permanent elimination.
+	# In the dungeon, players simply respawn at their full max_health.
+	var is_final_death := (GameState.phase == GameState.Phase.FINAL_BATTLE)
 
-	# Each death permanently lowers max health (floor of 1).
-	max_health = maxi(1, max_health - 1)
 	state = State.DEAD
 	velocity = Vector2.ZERO
 	invincibility_timer.stop()

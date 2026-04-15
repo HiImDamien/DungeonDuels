@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://d3jct2cpuluq3"]
 
-[ext_resource type="Script" uid="uid://uuvetn6lnx8l" path="res://scripts/hud.gd" id="1_oo0fn"]
+[ext_resource type="Script" uid="uid://uuvetn6lnx8l" path="res://scripts/ui/hud.gd" id="1_oo0fn"]
 [ext_resource type="Texture2D" uid="uid://cfa2mhl7bt7t8" path="res://assets/brackeys_platformer_assets/sprites/hearts.png" id="2_oo0fn"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_5ysmq"]

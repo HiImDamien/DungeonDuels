@@ -126,8 +126,13 @@ func _on_p2_shield_changed(shield_health: int) -> void:
 # ── helpers ───────────────────────────────────────────────────────────────────
 
 func draw_hearts(container: HBoxContainer, health: int, max_health: int) -> void:
+	# Immediate removal (not queue_free) so the layout reflows in the same frame
+	# and the container resizes before new hearts are added.
 	for child in container.get_children():
-		child.queue_free()
+		child.free()
+	# Shrink-centre so the HBoxContainer wraps its content and stays centred
+	# inside the parent CenterContainer regardless of heart count.
+	container.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	for i in range(max_health):
 		var heart = TextureRect.new()
 		heart.texture = full_heart if i < health else empty_heart

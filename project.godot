@@ -11,7 +11,7 @@ config_version=5
 [application]
 
 config/name="DungeonDuels"
-run/main_scene="res://scenes/title_screen.tscn"
+run/main_scene="res://scenes/ui/title_screen.tscn"
 config/features=PackedStringArray("4.6", "Forward Plus")
 config/icon="res://icon.svg"
 
@@ -23,6 +23,7 @@ GameState="*res://scripts/game/game_state.gd"
 
 window/size/viewport_width=365
 window/size/viewport_height=202
+window/size/mode=3
 window/stretch/mode="canvas_items"
 
 [dotnet]
@@ -32,6 +33,12 @@ project/assembly_name="DungeonDuels"
 [gui]
 
 theme/default_font_multichannel_signed_distance_field=true
+
+[importer_defaults]
+
+font_data_dynamic={
+&"multichannel_signed_distance_field": true
+}
 
 [input]
 

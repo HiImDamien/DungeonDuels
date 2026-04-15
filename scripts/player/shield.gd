@@ -16,7 +16,11 @@ const POLYGON_DISTANCE := 14.0
 # Captured from the scene in _ready() so we never hardcode the offset.
 var _base_position := Vector2.ZERO
 
-@export var MAX_HEALTH := 10
+@export var MAX_HEALTH := 10:
+	set(value):
+		MAX_HEALTH = value
+		health = value
+		
 @export var cooldown_time := 2.2
 @export var recharge_interval := 0.3
 @export var recharge_delay := 0.5
@@ -152,6 +156,24 @@ func reset() -> void:
 	on_cooldown = false
 	deactivate()
 	health = MAX_HEALTH
+
+## Restores all upgrade-affected stats after a scene transition.
+## Must be called AFTER the shield node is in the scene tree (i.e. after _ready).
+## Updates both the exported values and their corresponding Timer wait_times so
+## the new values take effect immediately on the next timer cycle.
+func apply_stats(
+		p_max_health: int,
+		p_cooldown_time: float,
+		p_recharge_interval: float,
+		p_recharge_delay: float
+) -> void:
+	MAX_HEALTH              = p_max_health          # setter also sets health = value
+	cooldown_time           = p_cooldown_time
+	cooldown_timer.wait_time = p_cooldown_time
+	recharge_interval           = p_recharge_interval
+	recharge_timer.wait_time    = p_recharge_interval
+	recharge_delay              = p_recharge_delay
+	recharge_delay_timer.wait_time = p_recharge_delay
 
 func _on_area_entered(area):
 	pass

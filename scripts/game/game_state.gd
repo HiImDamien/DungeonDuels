@@ -7,7 +7,7 @@ var phase: Phase = Phase.DUNGEON
 
 # ── Match timer ───────────────────────────────────────────────────────────────
 
-const MATCH_DURATION := 60.0          # seconds before final battle begins
+const MATCH_DURATION := 63.0          # seconds before final battle begins
 var time_remaining: float = MATCH_DURATION
 
 signal timer_tick(seconds_left: int)  # emitted each whole-second change
@@ -21,6 +21,21 @@ var p1_kills:       int = 0
 var p2_health:      int = 5
 var p2_max_health:  int = 5
 var p2_kills:       int = 0
+
+# ── Upgrade stats (weapon + shield, survive scene transitions) ────────────────
+# Defaults match bow_weapon.tscn and shield.tscn scene defaults.
+
+var p1_fire_rate:               float = 0.3
+var p1_shield_max_health:       int   = 10
+var p1_shield_cooldown_time:    float = 2.2
+var p1_shield_recharge_interval:float = 0.3
+var p1_shield_recharge_delay:   float = 0.5
+
+var p2_fire_rate:               float = 0.3
+var p2_shield_max_health:       int   = 10
+var p2_shield_cooldown_time:    float = 2.2
+var p2_shield_recharge_interval:float = 0.3
+var p2_shield_recharge_delay:   float = 0.5
 
 # ── Grace period ──────────────────────────────────────────────────────────────
 
@@ -83,3 +98,24 @@ func save_player_stats(p1: CharacterBody2D, p2: CharacterBody2D) -> void:
 	p2_health     = p2.health
 	p2_max_health = p2.max_health
 	p2_kills      = p2.kills
+
+	# Save weapon upgrade (fire_rate may have been reduced by attack-speed pickups)
+	if p1.current_weapon != null:
+		p1_fire_rate = p1.current_weapon.fire_rate
+	if p2.current_weapon != null:
+		p2_fire_rate = p2.current_weapon.fire_rate
+
+	# Save shield upgrades (MAX_HEALTH and regen timers may have been improved)
+	var s1: Shield = p1.get_node_or_null("Shield")
+	if s1 != null:
+		p1_shield_max_health        = s1.MAX_HEALTH
+		p1_shield_cooldown_time     = s1.cooldown_time
+		p1_shield_recharge_interval = s1.recharge_interval
+		p1_shield_recharge_delay    = s1.recharge_delay
+
+	var s2: Shield = p2.get_node_or_null("Shield")
+	if s2 != null:
+		p2_shield_max_health        = s2.MAX_HEALTH
+		p2_shield_cooldown_time     = s2.cooldown_time
+		p2_shield_recharge_interval = s2.recharge_interval
+		p2_shield_recharge_delay    = s2.recharge_delay
