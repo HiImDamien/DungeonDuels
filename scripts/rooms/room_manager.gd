@@ -95,8 +95,8 @@ func on_enemy_died():
 			await get_tree().create_timer(1).timeout
 			print("Load the upgrades!")
 			if current_def_index == -1:
-			completed_rooms = 0
+				completed_rooms = 0
 		else:
 			completed_rooms += 1
 		call_deferred("load_upgrades")
-			loading = false
+		loading = false
