@@ -1,34 +1,38 @@
 [gd_scene format=3 uid="uid://cfwkxcyy8liwt"]
 
 [ext_resource type="Script" uid="uid://b1m21ntrtcpc8" path="res://scripts/enemy/boss.gd" id="1_1"]
-[ext_resource type="Texture2D" uid="uid://bhykessftq25q" path="res://assets/brackeys_platformer_assets/sprites/atlas.png" id="2_2"]
+[ext_resource type="Texture2D" uid="uid://bxuouykvjdaje" path="res://assets/brackeys_platformer_assets/sprites/slime_purple.png" id="2_y04nh"]
 
-[sub_resource type="AtlasTexture" id="AtlasTexture_p57ef"]
-atlas = ExtResource("2_2")
-region = Rect2(20, 0, 20, 20)
+[sub_resource type="AtlasTexture" id="AtlasTexture_y04nh"]
+atlas = ExtResource("2_y04nh")
+region = Rect2(0, 25, 24, 23)
 
-[sub_resource type="AtlasTexture" id="AtlasTexture_u5sy4"]
-atlas = ExtResource("2_2")
-region = Rect2(40, 0, 20, 20)
+[sub_resource type="AtlasTexture" id="AtlasTexture_vefcp"]
+atlas = ExtResource("2_y04nh")
+region = Rect2(24, 25, 24, 23)
 
-[sub_resource type="AtlasTexture" id="AtlasTexture_gee14"]
-atlas = ExtResource("2_2")
-region = Rect2(20, 20, 20, 20)
+[sub_resource type="AtlasTexture" id="AtlasTexture_e3jr6"]
+atlas = ExtResource("2_y04nh")
+region = Rect2(48, 25, 24, 23)
 
-[sub_resource type="SpriteFrames" id="SpriteFrames_lv0ya"]
+[sub_resource type="AtlasTexture" id="AtlasTexture_b0cli"]
+atlas = ExtResource("2_y04nh")
+region = Rect2(72, 25, 24, 23)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_ee08l"]
 animations = [{
 "frames": [{
 "duration": 1.0,
-"texture": SubResource("AtlasTexture_p57ef")
+"texture": SubResource("AtlasTexture_y04nh")
 }, {
 "duration": 1.0,
-"texture": SubResource("AtlasTexture_u5sy4")
+"texture": SubResource("AtlasTexture_vefcp")
 }, {
 "duration": 1.0,
-"texture": SubResource("AtlasTexture_p57ef")
+"texture": SubResource("AtlasTexture_e3jr6")
 }, {
 "duration": 1.0,
-"texture": SubResource("AtlasTexture_gee14")
+"texture": SubResource("AtlasTexture_b0cli")
 }],
 "loop": true,
 "name": &"idle",
@@ -36,7 +40,7 @@ animations = [{
 }]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_vtaks"]
-radius = 16.363918
+radius = 8.69227
 
 [node name="Boss" type="CharacterBody2D" unique_id=1475629601 groups=["enemy"]]
 scale = Vector2(1.5, 1.5)
@@ -46,14 +50,16 @@ script = ExtResource("1_1")
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." unique_id=586438869]
 texture_filter = 1
-position = Vector2(0.666667, -7.333333)
+position = Vector2(0, -10.666665)
 scale = Vector2(1.8333334, 1.75)
-sprite_frames = SubResource("SpriteFrames_lv0ya")
+sprite_frames = SubResource("SpriteFrames_ee08l")
 animation = &"idle"
 autoplay = "idle"
+frame = 3
+frame_progress = 0.11530506
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=905278771]
-position = Vector2(0, -6.6666665)
+position = Vector2(0, -0.66666794)
 shape = SubResource("CircleShape2D_vtaks")
 
 [node name="ShootTimer" type="Timer" parent="." unique_id=788700188]

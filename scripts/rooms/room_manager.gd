@@ -16,7 +16,7 @@ const UPGRADE_SCENES = [preload("res://scenes/upgrades/attack_rate.tscn"), prelo
 preload("res://scenes/upgrades/shield_regen.tscn"), preload("res://scenes/upgrades/shield_max_increase.tscn")]
 const NORMAL_ROOM_TYPES = [preload("res://scripts/rooms/room1.gd"), preload("res://scripts/rooms/room2.gd"), preload("res://scripts/rooms/room3.gd")]
 const BOSS_ROOM_TYPE = preload("res://scripts/rooms/room_boss.gd")
-const BOSS_ROOM_INTERVAL: int = 2
+const BOSS_ROOM_INTERVAL: int = 3
 
 func start(player_node: CharacterBody2D, world_node: Node):
 	player_instance = player_node
