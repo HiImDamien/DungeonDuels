@@ -53,7 +53,7 @@ animation = &"idle"
 autoplay = "idle"
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=905278771]
-position = Vector2(-1, -7)
+position = Vector2(0, -6.6666665)
 shape = SubResource("CircleShape2D_vtaks")
 
 [node name="ShootTimer" type="Timer" parent="." unique_id=788700188]
