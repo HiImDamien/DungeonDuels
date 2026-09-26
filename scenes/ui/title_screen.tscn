@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" uid="uid://dan8soewrpwhe" path="res://scripts/ui/title_screen.gd" id="1_script"]
 [ext_resource type="FontFile" uid="uid://bvonjxyl7tfh8" path="res://assets/brackeys_platformer_assets/fonts/PixelOperator8-Bold.ttf" id="2_font"]
+[ext_resource type="Script" path="res://scripts/ui/menu_list.gd" id="3_menu"]
 
 [node name="TitleScreen" type="Control" unique_id=362329495]
 layout_mode = 3
@@ -20,9 +21,9 @@ anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
 offset_left = -80.0
-offset_top = -40.0
+offset_top = -52.0
 offset_right = 80.0
-offset_bottom = 40.0
+offset_bottom = 52.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_constants/separation = 16
@@ -35,21 +36,29 @@ theme_override_font_sizes/font_size = 24
 text = "DUNGEON DUELS"
 horizontal_alignment = 1
 
-[node name="PlayButton" type="Button" parent="VBoxContainer" unique_id=1543694076]
+[node name="Menu" type="VBoxContainer" parent="VBoxContainer" unique_id=1377120944]
 layout_mode = 2
-focus_neighbor_top = NodePath("../QuitButton")
-focus_neighbor_bottom = NodePath("../QuitButton")
+theme_override_constants/separation = 6
+script = ExtResource("3_menu")
+
+[node name="PlayButton" type="Button" parent="VBoxContainer/Menu" unique_id=1543694076]
+layout_mode = 2
 theme_override_fonts/font = ExtResource("2_font")
 theme_override_font_sizes/font_size = 16
 text = "PLAY"
 
-[node name="QuitButton" type="Button" parent="VBoxContainer" unique_id=1938472651]
+[node name="ControlsButton" type="Button" parent="VBoxContainer/Menu" unique_id=842113907]
 layout_mode = 2
-focus_neighbor_top = NodePath("../PlayButton")
-focus_neighbor_bottom = NodePath("../PlayButton")
+theme_override_fonts/font = ExtResource("2_font")
+theme_override_font_sizes/font_size = 16
+text = "CONTROLS"
+
+[node name="QuitButton" type="Button" parent="VBoxContainer/Menu" unique_id=1938472651]
+layout_mode = 2
 theme_override_fonts/font = ExtResource("2_font")
 theme_override_font_sizes/font_size = 16
 text = "QUIT"
 
-[connection signal="pressed" from="VBoxContainer/PlayButton" to="." method="_on_play_button_pressed"]
-[connection signal="pressed" from="VBoxContainer/QuitButton" to="." method="_on_quit_button_pressed"]
+[connection signal="pressed" from="VBoxContainer/Menu/PlayButton" to="." method="_on_play_button_pressed"]
+[connection signal="pressed" from="VBoxContainer/Menu/ControlsButton" to="." method="_on_controls_button_pressed"]
+[connection signal="pressed" from="VBoxContainer/Menu/QuitButton" to="." method="_on_quit_button_pressed"]
