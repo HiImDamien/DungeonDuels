@@ -32,7 +32,7 @@ func start_swing() -> void:
 
 	tween.tween_property(self , "rotation", base_rotation + deg_to_rad(120), 0.12)
 
-	await get_tree().create_timer(0.2).timeout
+	await get_tree().create_timer(0.2, false).timeout
 	_finish_swing()
 
 func _finish_swing() -> void:

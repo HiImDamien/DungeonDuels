@@ -93,11 +93,11 @@ func _attack_ring() -> void:
 	# Blink three times as a telegraph before firing.
 	for i in 3:
 		animated_sprite.modulate = Color(1.6, 1.6, 1.6)
-		await get_tree().create_timer(TELEGRAPH_TIME / 6.0).timeout
+		await get_tree().create_timer(TELEGRAPH_TIME / 6.0, false).timeout
 		if not is_instance_valid(self):
 			return
 		animated_sprite.modulate = _base_tint()
-		await get_tree().create_timer(TELEGRAPH_TIME / 6.0).timeout
+		await get_tree().create_timer(TELEGRAPH_TIME / 6.0, false).timeout
 		if not is_instance_valid(self):
 			return
 
@@ -115,7 +115,7 @@ func _attack_triple() -> void:
 			break
 		spawn_bullet(locked_direction)
 		if i < BURST_AMOUNT - 1:
-			await get_tree().create_timer(BURST_INTERVAL).timeout
+			await get_tree().create_timer(BURST_INTERVAL, false).timeout
 			if not is_instance_valid(self):
 				return
 	is_shooting = false

@@ -5,7 +5,9 @@ extends Control
 
 func _ready() -> void:
 	MusicManager.play_game_music()
-	add_child(preload("res://scripts/ui/grace_overlay.gd").new())
+	var overlay := CountdownOverlay.new()
+	add_child(overlay)
+	overlay.follow_grace_period()
 	# Resets phase, stats and timer so a rematch from the title screen starts clean.
 	GameState.start_match()
 	GameState.timer_expired.connect(_on_timer_expired, CONNECT_ONE_SHOT)

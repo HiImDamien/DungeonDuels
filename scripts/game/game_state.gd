@@ -34,6 +34,12 @@ var player_stats := {
 	2: PlayerStats.new(),
 }
 
+# ── Pausing ───────────────────────────────────────────────────────────────────
+
+## How many times each player may pause per match (dungeon + final battle).
+const PAUSES_PER_PLAYER := 3
+var pauses_left := {1: PAUSES_PER_PLAYER, 2: PAUSES_PER_PLAYER}
+
 # ── Opponent event ticker ─────────────────────────────────────────────────────
 
 signal opponent_event(from_player: int, message: String)
@@ -49,6 +55,7 @@ func start_match() -> void:
 	phase = Phase.DUNGEON
 	for index in player_stats:
 		player_stats[index] = PlayerStats.new()
+		pauses_left[index] = PAUSES_PER_PLAYER
 	time_remaining = MATCH_DURATION
 	_last_whole_second = int(ceil(time_remaining))
 	_timer_active = true
@@ -72,10 +79,10 @@ func start_grace_period() -> void:
 	is_grace = true
 	for i in range(int(GRACE_DURATION), 0, -1):
 		grace_tick.emit(i)
-		await get_tree().create_timer(1.0).timeout
+		await get_tree().create_timer(1.0, false).timeout
 	is_grace = false
 	grace_ended.emit()
-	await get_tree().create_timer(1.2).timeout
+	await get_tree().create_timer(1.2, false).timeout
 	grace_cleared.emit()
 
 # ── Player stat persistence ───────────────────────────────────────────────────

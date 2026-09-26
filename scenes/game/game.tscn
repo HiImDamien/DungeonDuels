@@ -4,6 +4,7 @@
 [ext_resource type="PackedScene" uid="uid://d3jct2cpuluq3" path="res://scenes/ui/hud.tscn" id="2_lnu2h"]
 [ext_resource type="PackedScene" uid="uid://bsw0kg07gk5tx" path="res://scenes/game/player2_world.tscn" id="2_yqjtg"]
 [ext_resource type="Script" uid="uid://bpffspj3ow0b" path="res://scripts/game/game.gd" id="4_game1"]
+[ext_resource type="PackedScene" path="res://scenes/ui/pause_menu.tscn" id="9_pause"]
 [node name="Game" type="Control" unique_id=698839627]
 clip_contents = true
 layout_mode = 3
@@ -81,3 +82,5 @@ theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
 theme_override_constants/outline_size = 4
 theme_override_font_sizes/font_size = 10
 horizontal_alignment = 1
+
+[node name="PauseMenu" parent="." instance=ExtResource("9_pause")]

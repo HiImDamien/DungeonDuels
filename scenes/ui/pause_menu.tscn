@@ -1,0 +1,116 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/pause_menu.gd" id="1_pause"]
+[ext_resource type="Script" path="res://scripts/ui/menu_list.gd" id="2_menu"]
+[ext_resource type="FontFile" uid="uid://bvonjxyl7tfh8" path="res://assets/brackeys_platformer_assets/fonts/PixelOperator8-Bold.ttf" id="3_bold"]
+[ext_resource type="FontFile" path="res://assets/brackeys_platformer_assets/fonts/PixelOperator8.ttf" id="4_regular"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
+content_margin_left = 14.0
+content_margin_top = 10.0
+content_margin_right = 14.0
+content_margin_bottom = 10.0
+bg_color = Color(0.08, 0.08, 0.12, 0.95)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(1, 0.85, 0.2, 1)
+
+[node name="PauseMenu" type="CanvasLayer"]
+process_mode = 3
+layer = 20
+script = ExtResource("1_pause")
+
+[node name="Root" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Dim" type="ColorRect" parent="Root"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.6)
+
+[node name="Center" type="CenterContainer" parent="Root"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Panel" type="PanelContainer" parent="Root/Center"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
+
+[node name="VBox" type="VBoxContainer" parent="Root/Center/Panel"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Title" type="Label" parent="Root/Center/Panel/VBox"]
+layout_mode = 2
+theme_override_fonts/font = ExtResource("3_bold")
+theme_override_font_sizes/font_size = 16
+text = "PAUSED"
+horizontal_alignment = 1
+
+[node name="Info" type="Label" parent="Root/Center/Panel/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.7, 0.75, 1)
+theme_override_fonts/font = ExtResource("4_regular")
+theme_override_font_sizes/font_size = 8
+text = "P1  -  2 pauses left"
+horizontal_alignment = 1
+
+[node name="Menu" type="VBoxContainer" parent="Root/Center/Panel/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 0
+script = ExtResource("2_menu")
+
+[node name="ResumeButton" type="Button" parent="Root/Center/Panel/VBox/Menu"]
+layout_mode = 2
+theme_override_fonts/font = ExtResource("3_bold")
+theme_override_font_sizes/font_size = 8
+text = "RESUME"
+flat = true
+
+[node name="ControlsButton" type="Button" parent="Root/Center/Panel/VBox/Menu"]
+layout_mode = 2
+theme_override_fonts/font = ExtResource("3_bold")
+theme_override_font_sizes/font_size = 8
+text = "CONTROLS"
+flat = true
+
+[node name="QuitButton" type="Button" parent="Root/Center/Panel/VBox/Menu"]
+layout_mode = 2
+theme_override_fonts/font = ExtResource("3_bold")
+theme_override_font_sizes/font_size = 8
+text = "QUIT TO MENU"
+flat = true
+
+[node name="Toast" type="Label" parent="."]
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -22.0
+offset_bottom = -10.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_colors/font_color = Color(1, 0.85, 0.2, 1)
+theme_override_fonts/font = ExtResource("4_regular")
+theme_override_font_sizes/font_size = 8
+text = "P2 has no pauses left"
+horizontal_alignment = 1
+
+[connection signal="pressed" from="Root/Center/Panel/VBox/Menu/ResumeButton" to="." method="_on_resume_pressed"]
+[connection signal="pressed" from="Root/Center/Panel/VBox/Menu/ControlsButton" to="." method="_on_controls_pressed"]
+[connection signal="pressed" from="Root/Center/Panel/VBox/Menu/QuitButton" to="." method="_on_quit_pressed"]

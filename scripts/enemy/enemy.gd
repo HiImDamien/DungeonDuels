@@ -46,7 +46,7 @@ func _base_tint() -> Color:
 
 func _flash_hit() -> void:
 	animated_sprite.modulate = HIT_FLASH_COLOR
-	await get_tree().create_timer(HIT_FLASH_TIME).timeout
+	await get_tree().create_timer(HIT_FLASH_TIME, false).timeout
 	if is_instance_valid(self):
 		animated_sprite.modulate = _base_tint()
 

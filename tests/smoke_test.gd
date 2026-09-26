@@ -6,12 +6,14 @@ extends Node
 ## It drives the real game scenes, so it catches broken wiring that a play-test
 ## would, but it can't tell you whether the game *feels* right — still play it.
 
-const TIMEOUT_SECONDS := 90.0
+const TIMEOUT_SECONDS := 150.0
 
 var _failures := 0
 var _checks := 0
 
 func _ready() -> void:
+	# Keep running while the game is paused so the pause checks can drive it.
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	get_tree().create_timer(TIMEOUT_SECONDS).timeout.connect(_on_timeout)
 	_run.call_deferred()
 
@@ -58,6 +60,25 @@ func clear_room(p: player) -> void:
 		e.take_damage(999, p)
 	await wait(1.6)  # room manager waits 1s, then spawns upgrades
 
+## Taps a controller button (device 0 = controller 1, 1 = controller 2).
+func press(button: JoyButton, device: int) -> void:
+	for pressed in [true, false]:
+		var event := InputEventJoypadButton.new()
+		event.device = device
+		event.button_index = button
+		event.pressed = pressed
+		Input.parse_input_event(event)
+		await get_tree().process_frame
+
+func press_key(key: Key) -> void:
+	for pressed in [true, false]:
+		var event := InputEventKey.new()
+		event.physical_keycode = key
+		event.keycode = key
+		event.pressed = pressed
+		Input.parse_input_event(event)
+		await get_tree().process_frame
+
 ## Moves the player onto a pickup so real physics triggers the pickup.
 func walk_onto(p: player, pickup: Area2D) -> void:
 	p.global_position = pickup.global_position
@@ -73,9 +94,79 @@ func _check_room_layout(scene: PackedScene) -> void:
 		"%s: player spawn and %d enemy spawns, all with an enemy chosen" % [scene.resource_path.get_file(), complete.size()])
 	room.free()
 
+func _test_title_and_controls() -> void:
+	print("Title screen and controls")
+	var title: Node = load("res://scenes/ui/title_screen.tscn").instantiate()
+	get_tree().root.add_child(title)
+	await get_tree().process_frame
+	var names: Array = title.menu.get_buttons().map(func(b): return b.text)
+	check(names == ["PLAY", "CONTROLS", "QUIT"], "title menu is Play, Controls, Quit")
+
+	await press(JOY_BUTTON_DPAD_DOWN, 0)
+	await press(JOY_BUTTON_A, 0)
+	var screens: Array = title.get_children().filter(func(c): return c is ControlsScreen)
+	check(screens.size() == 1, "choosing Controls opens the controls screen")
+	check(InputLabels.controller_label("shoot") == "RT / R2"
+		and InputLabels.controller_label("shield_activate") == "LT / L2"
+		and InputLabels.controller_label("move_left") == "Left Stick"
+		and InputLabels.controller_label("pause") == "Start / Options",
+		"controller labels come from the input map")
+	check(InputLabels.keyboard_label(["move_up", "move_left", "move_down", "move_right"]) == "W A S D"
+		and InputLabels.keyboard_label(["aim_up", "aim_left", "aim_down", "aim_right"]) == "Arrow Keys"
+		and InputLabels.keyboard_label(["shoot"]) == "E",
+		"keyboard labels come from the input map")
+	await press(JOY_BUTTON_B, 0)
+	await get_tree().process_frame
+	check(title.get_children().filter(func(c): return c is ControlsScreen).is_empty() and title.menu.active,
+		"B closes the controls screen and returns to the menu")
+	title.free()
+
+func _test_pause(game: Node) -> void:
+	print("Pause menu")
+	var pause_menu: PauseMenu = game.get_node("PauseMenu")
+	await press(JOY_BUTTON_START, 1)
+	check(get_tree().paused and pause_menu.paused_by == 2, "controller 2's Start pauses the game as P2")
+	check(GameState.pauses_left[2] == GameState.PAUSES_PER_PLAYER - 1, "P2 used one of their pauses")
+
+	var time_left := GameState.time_remaining
+	var enemy_positions: Array = get_tree().get_nodes_in_group("enemy").map(func(e): return e.global_position)
+	await wait(1.0)
+	var enemies_frozen := get_tree().get_nodes_in_group("enemy").map(func(e): return e.global_position) == enemy_positions
+	check(GameState.time_remaining == time_left and enemies_frozen, "everything is frozen while paused")
+
+	await press(JOY_BUTTON_START, 0)
+	await press(JOY_BUTTON_B, 0)
+	check(get_tree().paused and pause_menu._root.visible, "P1 can't resume or use P2's pause menu")
+
+	await press(JOY_BUTTON_DPAD_DOWN, 1)
+	await press(JOY_BUTTON_A, 1)
+	check(pause_menu._controls != null, "P2 can open Controls from the pause menu")
+	await press(JOY_BUTTON_START, 1)
+	check(get_tree().paused and pause_menu._controls != null, "Start doesn't resume while Controls is open")
+	await press(JOY_BUTTON_B, 1)
+	check(pause_menu._controls == null, "B closes Controls back to the pause menu")
+
+	await press(JOY_BUTTON_B, 1)
+	await wait(1.5)
+	check(get_tree().paused and not pause_menu._root.visible, "resuming counts down before unpausing")
+	await wait(2.2)
+	check(not get_tree().paused, "game unpauses after the countdown")
+
+	GameState.pauses_left[1] = 0
+	await press_key(KEY_ESCAPE)
+	check(not get_tree().paused, "a player with no pauses left can't pause")
+	GameState.pauses_left[1] = GameState.PAUSES_PER_PLAYER
+	await press_key(KEY_ESCAPE)
+	check(get_tree().paused and pause_menu.paused_by == 1, "Esc pauses as P1")
+	await press_key(KEY_ESCAPE)
+	await wait(3.8)
+	check(not get_tree().paused, "Esc resumes for P1")
+
 # ── The test ──────────────────────────────────────────────────────────────────
 
 func _run() -> void:
+	await _test_title_and_controls()
+
 	# Load the game as the current scene ourselves, so that when it changes
 	# scene to the final battle only the game is freed — not this test node.
 	var game: Node = load("res://scenes/game/game.tscn").instantiate()
@@ -119,6 +210,8 @@ func _run() -> void:
 	await wait(4.0)  # only enemy bullets can hurt a player in the dungeon
 	check(p1.health < p1_hp or p1.is_dead, "enemy bullets hit the player (hp %d → %d)" % [p1_hp, p1.health])
 	await wait(3.5)  # give a downed player time to get back up
+
+	await _test_pause(game)
 
 	print("Room flow and upgrades")
 	var kills_before := p1.kills
@@ -191,11 +284,14 @@ func _run() -> void:
 		f2.invincible = false
 		f2.player_hit(f1)
 	await wait(0.3)
+	await press(JOY_BUTTON_START, 0)
+	check(not get_tree().paused, "pausing is disabled once someone has won")
 	var win_labels: Array = get_tree().current_scene.get_children().filter(
 		func(c): return c is Label and c.text.ends_with("Wins!"))
 	check(win_labels.size() == 1 and win_labels[0].text == "P1 Wins!", "eliminating P2 shows 'P1 Wins!'")
 
 	GameState.start_match()
-	check(GameState.player_stats[1].kills == 0, "starting a new match resets stats")
+	check(GameState.player_stats[1].kills == 0 and GameState.pauses_left[1] == GameState.PAUSES_PER_PLAYER,
+		"starting a new match resets stats and pauses")
 
 	_finish()

@@ -76,7 +76,7 @@ func _on_room_cleared() -> void:
 	if not is_inside_tree():
 		return
 	loading = true
-	await get_tree().create_timer(1.0).timeout
+	await get_tree().create_timer(1.0, false).timeout
 
 	var was_boss := _is_boss_room(rooms_completed)
 	rooms_completed += 1

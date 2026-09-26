@@ -9,7 +9,7 @@
 set -u
 cd "$(dirname "$0")/.."
 GODOT="${GODOT:-godot}"
-LIMIT=120  # seconds; the test itself gives up at 90
+LIMIT=180  # seconds; the test itself gives up at 150
 
 # Import first so newly added scripts/classes are registered.
 "$GODOT" --headless --editor --quit --path . >/dev/null 2>&1

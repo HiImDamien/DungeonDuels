@@ -60,7 +60,7 @@ func _shoot_with_animation() -> void:
 	await animated_sprite.animation_finished
 	if not is_instance_valid(self):
 		return
-	await get_tree().create_timer(SHOOT_WINDUP).timeout
+	await get_tree().create_timer(SHOOT_WINDUP, false).timeout
 	if not is_instance_valid(self):
 		return
 	if not GameState.is_grace:
