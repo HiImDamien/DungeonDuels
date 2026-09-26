@@ -48,8 +48,8 @@ func _enter_phase_2() -> void:
 	is_enraged = true
 	animated_sprite.modulate = ENRAGED_TINT
 	shoot_timer.wait_time = P2_SHOOT_INTERVAL
-	if player_instance.camera_2d:
-		player_instance.camera_2d.apply_noise_shake()
+	if target.camera_2d:
+		target.camera_2d.apply_noise_shake()
 
 func _current_speed() -> float:
 	return P2_SPEED if is_enraged else P1_SPEED
@@ -68,7 +68,7 @@ func _physics_process(delta: float) -> void:
 	if GameState.is_grace:
 		return
 
-	if is_hopping and not is_shooting and not player_instance.is_dead:
+	if is_hopping and not is_shooting and not target.is_dead:
 		velocity = velocity.move_toward(direction_to_player() * _current_speed(), 250 * delta)
 	else:
 		velocity = velocity.move_toward(Vector2.ZERO, 300 * delta)
