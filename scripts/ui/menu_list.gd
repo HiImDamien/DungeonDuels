@@ -66,19 +66,22 @@ func _unhandled_input(event: InputEvent) -> void:
 	if controlling_player != 0 and player_for_event(event) != controlling_player:
 		return
 
-	var handled := true
+	if _handle_stick(event):
+		get_viewport().set_input_as_handled()
+		return
+	if not (_is_up(event) or _is_down(event) or _is_confirm(event) or _is_back(event)):
+		return
+	# Mark handled *before* acting: confirming can change scene (Play, Quit to
+	# Menu), which removes this node from the tree and leaves no viewport.
+	get_viewport().set_input_as_handled()
 	if _is_up(event):
 		select(selected - 1)
 	elif _is_down(event):
 		select(selected + 1)
 	elif _is_confirm(event):
 		confirm()
-	elif _is_back(event):
-		cancelled.emit()
 	else:
-		handled = _handle_stick(event)
-	if handled:
-		get_viewport().set_input_as_handled()
+		cancelled.emit()
 
 func _handle_stick(event: InputEvent) -> bool:
 	if not (event is InputEventJoypadMotion and event.axis == JOY_AXIS_LEFT_Y):

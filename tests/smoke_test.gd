@@ -94,10 +94,14 @@ func _check_room_layout(scene: PackedScene) -> void:
 		"%s: player spawn and %d enemy spawns, all with an enemy chosen" % [scene.resource_path.get_file(), complete.size()])
 	room.free()
 
-func _test_title_and_controls() -> void:
+## Returns the game scene, started by pressing Play on the title screen.
+func _test_title_and_controls() -> Node:
 	print("Title screen and controls")
+	# Make the title the current scene so pressing Play swaps it out like the
+	# real game does, while this test node stays alive.
 	var title: Node = load("res://scenes/ui/title_screen.tscn").instantiate()
 	get_tree().root.add_child(title)
+	get_tree().current_scene = title
 	await get_tree().process_frame
 	var names: Array = title.menu.get_buttons().map(func(b): return b.text)
 	check(names == ["PLAY", "CONTROLS", "QUIT"], "title menu is Play, Controls, Quit")
@@ -119,7 +123,13 @@ func _test_title_and_controls() -> void:
 	await get_tree().process_frame
 	check(title.get_children().filter(func(c): return c is ControlsScreen).is_empty() and title.menu.active,
 		"B closes the controls screen and returns to the menu")
-	title.free()
+
+	await press(JOY_BUTTON_DPAD_UP, 0)
+	await press(JOY_BUTTON_A, 0)
+	await wait(0.3)
+	var game := get_tree().current_scene
+	check(game != null and game.name == "Game", "pressing Play starts the game")
+	return game
 
 func _test_pause(game: Node) -> void:
 	print("Pause menu")
@@ -165,14 +175,11 @@ func _test_pause(game: Node) -> void:
 # ── The test ──────────────────────────────────────────────────────────────────
 
 func _run() -> void:
-	await _test_title_and_controls()
-
-	# Load the game as the current scene ourselves, so that when it changes
-	# scene to the final battle only the game is freed — not this test node.
-	var game: Node = load("res://scenes/game/game.tscn").instantiate()
-	get_tree().root.add_child(game)
-	get_tree().current_scene = game
-	await wait(0.5)
+	var game := await _test_title_and_controls()
+	if game == null or game.name != "Game":
+		_finish()
+		return
+	await wait(0.3)
 
 	print("Dungeon setup")
 	var p1 := find_player(1)
@@ -290,8 +297,22 @@ func _run() -> void:
 		func(c): return c is Label and c.text.ends_with("Wins!"))
 	check(win_labels.size() == 1 and win_labels[0].text == "P1 Wins!", "eliminating P2 shows 'P1 Wins!'")
 
-	GameState.start_match()
+	print("Back to the menu and rematch")
+	await press(JOY_BUTTON_Y, 0)
+	await wait(0.3)
+	check(get_tree().current_scene.name == "TitleScreen", "Y on the win screen returns to the title")
+	await press(JOY_BUTTON_A, 0)
+	await wait(0.3)
+	check(get_tree().current_scene.name == "Game", "Play starts a rematch")
 	check(GameState.player_stats[1].kills == 0 and GameState.pauses_left[1] == GameState.PAUSES_PER_PLAYER,
-		"starting a new match resets stats and pauses")
+		"the rematch resets stats and pauses")
+	await wait(3.5)  # grace period
+	await press(JOY_BUTTON_START, 0)
+	await press(JOY_BUTTON_DPAD_DOWN, 0)
+	await press(JOY_BUTTON_DPAD_DOWN, 0)
+	await press(JOY_BUTTON_A, 0)
+	await wait(0.3)
+	check(get_tree().current_scene.name == "TitleScreen" and not get_tree().paused,
+		"Quit to Menu returns to the title, unpaused")
 
 	_finish()

@@ -35,5 +35,10 @@ grep -vE 'libhostfxr|dotnet|leaked at exit|still in use at exit|ObjectDB instanc
 if [ "$STATUS" -eq 0 ] && ! grep -q '^[0-9]* checks, 0 failed' "$LOG"; then
 	STATUS=1
 fi
+# Any script error during the run fails it, even if every check passed.
+if grep -q 'SCRIPT ERROR' "$LOG"; then
+	echo "FAILED: script errors were logged during the run (see above)."
+	[ "$STATUS" -eq 0 ] && STATUS=1
+fi
 rm -f "$LOG"
 exit "$STATUS"
