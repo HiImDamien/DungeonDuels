@@ -2,12 +2,11 @@ extends Control
 
 const P1_SPAWN := Vector2(80, 100)
 const P2_SPAWN := Vector2(220, 100)
+const P2_BULLET_COLOR := Color(1.0, 0.25, 0.25)
+const PLAYER_SCENE := preload("res://scenes/player/Player.tscn")
 
 @onready var world: Node2D = $HBoxContainer/BattlePanel/SubViewportContainer/SubViewport/FinalBattleWorld
 @onready var _hud: Control  = $HBoxContainer/CenterPanel/HUD
-
-var _p1: CharacterBody2D = null
-var _p2: CharacterBody2D = null
 
 var _game_over: bool = false
 
@@ -15,67 +14,22 @@ func _ready() -> void:
 	GameState.phase = GameState.Phase.FINAL_BATTLE
 	_hud.hide_timer()
 	_spawn_players()
-	var overlay := preload("res://scripts/ui/grace_overlay.gd").new()
-	add_child(overlay)
-	call_deferred("_start_grace")
-
-func _start_grace() -> void:
-	GameState.start_grace_period()
+	add_child(preload("res://scripts/ui/grace_overlay.gd").new())
+	GameState.start_grace_period.call_deferred()
 
 func _spawn_players() -> void:
-	var player_scene := preload("res://scenes/player/Player.tscn")
+	_spawn_player("", P1_SPAWN)
+	var p2 := _spawn_player("p2_", P2_SPAWN)
+	p2.current_weapon.bullet_color = P2_BULLET_COLOR
 
-	_p1 = player_scene.instantiate()
-	_p1.action_prefix = ""
-	world.add_child(_p1)
-	_p1.position   = P1_SPAWN
-	_p1.max_health = GameState.p1_max_health
-	_p1.health     = GameState.p1_max_health
-	_p1.kills      = GameState.p1_kills
-	_p1.eliminated.connect(_on_player_eliminated.bind(_p1))
-
-	_p2 = player_scene.instantiate()
-	_p2.action_prefix = "p2_"
-	world.add_child(_p2)
-	_p2.position   = P2_SPAWN
-	_p2.max_health = GameState.p2_max_health
-	_p2.health     = GameState.p2_max_health
-	_p2.kills      = GameState.p2_kills
-	_p2.eliminated.connect(_on_player_eliminated.bind(_p2))
-
-	# Wait one frame for equip_weapon (async) to finish.
-	await get_tree().process_frame
-
-	# Restore weapon stats — fire rate, bullet colour, and bullet modes.
-	_p1.current_weapon.fire_rate = GameState.p1_fire_rate
-	_p1.speed                    = GameState.p1_speed
-	if _p1.current_weapon.has_method("add_bullet_mode"):
-		for mode in GameState.p1_bullet_modes:
-			_p1.current_weapon.add_bullet_mode(mode)
-
-	_p2.current_weapon.fire_rate    = GameState.p2_fire_rate
-	_p2.current_weapon.bullet_color = Color(1.0, 0.25, 0.25)
-	_p2.speed                       = GameState.p2_speed
-	if _p2.current_weapon.has_method("add_bullet_mode"):
-		for mode in GameState.p2_bullet_modes:
-			_p2.current_weapon.add_bullet_mode(mode)
-
-	# Restore shield stats.
-	var s1: Shield = _p1.get_node("Shield")
-	s1.apply_stats(
-		GameState.p1_shield_max_health,
-		GameState.p1_shield_cooldown_time,
-		GameState.p1_shield_recharge_interval,
-		GameState.p1_shield_recharge_delay
-	)
-
-	var s2: Shield = _p2.get_node("Shield")
-	s2.apply_stats(
-		GameState.p2_shield_max_health,
-		GameState.p2_shield_cooldown_time,
-		GameState.p2_shield_recharge_interval,
-		GameState.p2_shield_recharge_delay
-	)
+func _spawn_player(prefix: String, spawn: Vector2) -> player:
+	var p: player = PLAYER_SCENE.instantiate()
+	p.action_prefix = prefix
+	world.add_child(p)
+	p.position = spawn
+	GameState.stats_for(p).apply_to(p)
+	p.eliminated.connect(_on_player_eliminated.bind(p))
+	return p
 
 func _on_player_eliminated(loser: CharacterBody2D) -> void:
 	_game_over = true

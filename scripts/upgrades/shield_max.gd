@@ -1,18 +1,11 @@
 extends Upgrade
 class_name shield_max
 
-@export var increase_amount = 5
+@export var increase_amount := 5
 
-func _ready() -> void:
-	self.description = "Max\nShield"
-	body_entered.connect(_on_body_entered)
+func _init() -> void:
+	description = "Max\nShield"
 
-func _on_body_entered(body: Node2D) -> void:
-	if body.is_in_group("player"):
-		var shield: Shield = body.get_node("Shield")
-		if shield == null:
-			print("Shield is null, why's that huh?")
-		else:
-			shield.MAX_HEALTH += increase_amount
-			shield.health = shield.MAX_HEALTH
-		self.on_item_pickup()
+func apply(p: CharacterBody2D) -> void:
+	var shield: Shield = p.get_node("Shield")
+	shield.max_health += increase_amount  # setter also refills the shield

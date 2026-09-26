@@ -15,7 +15,6 @@ func _ready() -> void:
 	if not hitbox.body_entered.is_connected(_on_hitbox_body_entered):
 		hitbox.body_entered.connect(_on_hitbox_body_entered)
 
-	self.fire_rate = 0.3
 
 func fire(_direction: Vector2) -> void:
 	if swinging:
