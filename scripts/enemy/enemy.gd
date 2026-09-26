@@ -3,8 +3,8 @@ extends CharacterBody2D
 ## Shared behaviour for every enemy: health, hit flash, kill credit and firing
 ## enemy bullets. Subclasses handle their own movement and attack patterns.
 ##
-## Every enemy scene needs an AnimatedSprite2D child, and the enemy must be
-## added to a room that already contains the "Player" node.
+## Every enemy scene needs an AnimatedSprite2D child. Whoever spawns the enemy
+## must set `target` before adding it to the tree.
 
 const ENEMY_BULLET := preload("res://scenes/enemy/enemy_bullet.tscn")
 const HIT_FLASH_TIME := 0.15
@@ -13,12 +13,14 @@ const HIT_FLASH_COLOR := Color(1, 0.2, 0.2)
 @export var max_health: int = 3
 @export var bullet_speed: float = 100.0
 
-@onready var player_instance: player = get_parent().get_node("Player")
 @onready var animated_sprite: AnimatedSprite2D = $AnimatedSprite2D
 
+## The player this enemy chases and shoots at.
+var target: player
 var health: int
 
 func _ready() -> void:
+	assert(target != null, "%s spawned without a target" % name)
 	health = max_health
 	add_to_group("enemy")
 	motion_mode = CharacterBody2D.MOTION_MODE_FLOATING
@@ -48,12 +50,12 @@ func _flash_hit() -> void:
 	if is_instance_valid(self):
 		animated_sprite.modulate = _base_tint()
 
-## False during the grace period or while this room's player is dead.
+## False during the grace period or while the target is dead.
 func can_attack() -> bool:
-	return not GameState.is_grace and not player_instance.is_dead
+	return not GameState.is_grace and not target.is_dead
 
 func direction_to_player() -> Vector2:
-	return (player_instance.global_position - global_position).normalized()
+	return (target.global_position - global_position).normalized()
 
 func spawn_bullet(dir: Vector2) -> void:
 	var bullet = ENEMY_BULLET.instantiate()

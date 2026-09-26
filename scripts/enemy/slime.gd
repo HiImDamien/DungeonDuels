@@ -38,7 +38,7 @@ func _physics_process(delta: float) -> void:
 		return
 
 	var target_velocity := Vector2.ZERO
-	if is_hopping and not player_instance.is_dead:
+	if is_hopping and not target.is_dead:
 		target_velocity = direction_to_player() * move_speed
 	velocity = velocity.move_toward(target_velocity, ACCELERATION * delta)
 	move_and_slide()

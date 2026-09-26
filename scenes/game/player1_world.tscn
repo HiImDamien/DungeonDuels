@@ -11,7 +11,6 @@ script = ExtResource("1_t8rks")
 [node name="Player" parent="." unique_id=1725424852 instance=ExtResource("3_24278")]
 z_index = 2
 position = Vector2(55, 55)
-collision_mask = 22
 
 [node name="Camera2D" type="Camera2D" parent="." unique_id=1408824195]
 scale = Vector2(5.6611986, 2.423195)

@@ -18,23 +18,23 @@ func _ready() -> void:
 	GameState.start_grace_period.call_deferred()
 
 func _spawn_players() -> void:
-	_spawn_player("", P1_SPAWN)
-	var p2 := _spawn_player("p2_", P2_SPAWN)
+	_spawn_player(1, P1_SPAWN)
+	var p2 := _spawn_player(2, P2_SPAWN)
 	p2.current_weapon.bullet_color = P2_BULLET_COLOR
 
-func _spawn_player(prefix: String, spawn: Vector2) -> player:
+func _spawn_player(index: int, spawn: Vector2) -> player:
 	var p: player = PLAYER_SCENE.instantiate()
-	p.action_prefix = prefix
+	p.player_index = index
 	world.add_child(p)
 	p.position = spawn
 	GameState.stats_for(p).apply_to(p)
 	p.eliminated.connect(_on_player_eliminated.bind(p))
 	return p
 
-func _on_player_eliminated(loser: CharacterBody2D) -> void:
+func _on_player_eliminated(loser: player) -> void:
 	_game_over = true
-	var winner_label := "P2 Wins!" if loser.action_prefix == "" else "P1 Wins!"
-	_show_winner(winner_label)
+	var winner := 2 if loser.player_index == 1 else 1
+	_show_winner("P%d Wins!" % winner)
 
 func _show_winner(text: String) -> void:
 	var backdrop := ColorRect.new()

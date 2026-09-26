@@ -11,8 +11,7 @@ region = Rect2(16, 0, 16, 16)
 radius = 6.0
 
 [node name="MaxHealth" type="Area2D"]
-collision_layer = 2
-collision_mask = 15
+collision_layer = 32
 script = ExtResource("1_mhp")
 
 [node name="Sprite2D" type="Sprite2D" parent="."]

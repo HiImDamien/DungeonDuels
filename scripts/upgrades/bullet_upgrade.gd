@@ -21,8 +21,8 @@ static func create(mode: String) -> BulletUpgrade:
 	var u := BulletUpgrade.new()
 	u.bullet_mode = mode
 	u.description = MODES[mode]["name"]
-	u.collision_layer = 2
-	u.collision_mask  = 15
+	u.collision_layer = PhysicsLayers.PICKUPS
+	u.collision_mask  = PhysicsLayers.PLAYERS
 
 	var shape_node := CollisionShape2D.new()
 	var circle := CircleShape2D.new()

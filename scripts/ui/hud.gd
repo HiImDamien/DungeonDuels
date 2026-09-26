@@ -6,12 +6,12 @@ extends Control
 @onready var timer_label  = $VBoxContainer/DividerCenter/DividerVBox/TimerLabel
 @onready var status_label = $VBoxContainer/DividerCenter/DividerVBox/StatusLabel
 
-# action_prefix → the HUD panel ("P1"/"P2") that shows that player's stats.
-const PANELS := {"": "P1", "p2_": "P2"}
+# Each player's stats are shown in the HUD panel named "P<player_index>".
+const PLAYER_COUNT := 2
 
 func _ready() -> void:
-	for panel_name in PANELS.values():
-		_panel_node(panel_name, "TitleLabel").text = panel_name.insert(1, "-")
+	for i in range(1, PLAYER_COUNT + 1):
+		_panel_node("P%d" % i, "TitleLabel").text = "P-%d" % i
 
 	GameState.timer_tick.connect(_on_timer_tick)
 	GameState.timer_expired.connect(_on_timer_expired)
@@ -42,7 +42,7 @@ func _panel_node(panel_name: String, suffix: String) -> Node:
 func _connect_players() -> void:
 	await get_tree().process_frame
 	for p: player in get_tree().get_nodes_in_group("player"):
-		_connect_player(p, PANELS[p.action_prefix])
+		_connect_player(p, "P%d" % p.player_index)
 
 func _connect_player(p: player, panel_name: String) -> void:
 	var hearts: HBoxContainer = _panel_node(panel_name, "Hearts")

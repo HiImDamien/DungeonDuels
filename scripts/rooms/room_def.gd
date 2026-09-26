@@ -27,5 +27,6 @@ func spawn_enemies(room: Node, manager: Node) -> void:
 		for pos: Vector2 in entry[1]:
 			var enemy: Node2D = entry[0].instantiate()
 			enemy.global_position = pos
+			enemy.target = manager.player_instance
 			room.add_child(enemy)
 			enemy.tree_exited.connect(manager._on_enemy_removed)
