@@ -94,7 +94,7 @@ func _handle_wall_hit() -> void:
 	if from.distance_squared_to(to) < 0.01:
 		to = from + direction * 2.0
 
-	var params = PhysicsRayQueryParameters2D.create(from, to, 2)
+	var params = PhysicsRayQueryParameters2D.create(from, to, PhysicsLayers.WALLS)
 	params.exclude = [self]
 	var result = space.intersect_ray(params)
 

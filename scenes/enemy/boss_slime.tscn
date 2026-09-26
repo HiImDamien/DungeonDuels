@@ -76,8 +76,8 @@ animations = [{
 radius = 5.0
 
 [node name="Slime" type="CharacterBody2D" unique_id=525107419 groups=["enemy"]]
-collision_layer = 2
-collision_mask = 15
+collision_layer = 16
+collision_mask = 19
 script = ExtResource("1_8jept")
 max_health = 20
 

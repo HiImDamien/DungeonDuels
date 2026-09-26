@@ -90,8 +90,8 @@ animations = [{
 radius = 5.0
 
 [node name="Slime_hard" type="CharacterBody2D" unique_id=525107419 groups=["enemy"]]
-collision_layer = 2
-collision_mask = 15
+collision_layer = 16
+collision_mask = 19
 script = ExtResource("1_i51ap")
 max_health = 6
 bullet_speed = 120.0

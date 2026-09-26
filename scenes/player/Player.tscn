@@ -288,10 +288,9 @@ animations = [{
 radius = 5.0
 
 [node name="Player" type="CharacterBody2D" unique_id=1725424852 groups=["player"]]
-collision_mask = 10
+collision_mask = 18
 motion_mode = 1
 script = ExtResource("1_4kuee")
-action_prefix = null
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." unique_id=966591007]
 texture_filter = 1
