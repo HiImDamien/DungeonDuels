@@ -85,6 +85,7 @@ radius = 5.0
 collision_layer = 2
 collision_mask = 15
 script = ExtResource("1_4wfld")
+bullet_speed = 120.0
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." unique_id=587083068]
 texture_filter = 1

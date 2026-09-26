@@ -1,9 +1,6 @@
 class_name RoomDef1
 extends RoomDefinition
+## Boss room.
 
 func _init():
-	player_spawn = Vector2(80, 105)
-	bat_spawns = []
-	slime_spawns = []
-	boss_spawns = [Vector2(80, 40)]
-	slime_hard_spawns = []
+	add_spawns(BOSS_SLIME, [Vector2(80, 40)])

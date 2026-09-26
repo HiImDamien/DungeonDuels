@@ -1,83 +1,46 @@
-extends CharacterBody2D
+extends Enemy
+## Hops toward the player and periodically fires a single aimed shot.
+## Used by both slime.tscn and slime_hard.tscn (which overrides the exports).
 
-@export var bullet_scene: PackedScene = preload("res://scenes/enemy/enemy_bullet.tscn")
-@export var bullet_speed: float = 120.0
 @export var shoot_interval: float = 2.5
+@export var hop_duration: float = 0.35   # seconds of active movement per hop
+@export var pause_duration: float = 0.7  # seconds of rest between hops
+@export var move_speed: float = 45.0
 
-@onready var player_instance: player = get_parent().get_node("Player")
+const ACCELERATION := 300.0
+const SHOOT_WINDUP := 0.45  # pause after the shoot animation before firing
+
 @onready var shoot_timer: Timer = $ShootTimer
 @onready var hop_timer: Timer = $HopTimer
-@onready var animated_sprite: AnimatedSprite2D = $AnimatedSprite2D
 
-const HOP_DURATION: float = 0.35   # seconds of active movement per hop
-const PAUSE_DURATION: float = 0.7  # seconds of rest between hops
-const SPEED: float = 45.0
-
-var room_manager: Node = null
-# Captured from room_manager when this enemy is registered so that on_enemy_died
-# calls made after the room has been replaced are silently discarded.
-var _spawn_generation: int = -1
-
-var health: int = 3
 var is_hopping: bool = false
 var is_shooting: bool = false
 
-func take_damage(amount: int = 1, attacker = null) -> void:
-	health -= amount
-	if health <= 0:
-		if attacker != null:
-			attacker.kills += 1
-		dies()
-		return
-	_flash_hit()
-
-func dies():
-	#if room_manager:
-	#	room_manager.on_enemy_died(_spawn_generation)
-	queue_free()
-
-func _flash_hit() -> void:
-	animated_sprite.modulate = Color(1, 0.2, 0.2)
-	await get_tree().create_timer(0.15).timeout
-	if is_instance_valid(self):
-		animated_sprite.modulate = Color(1, 1, 1)
-
 func _ready() -> void:
-	add_to_group("enemy")
-	motion_mode = CharacterBody2D.MOTION_MODE_FLOATING
-	safe_margin = 0.08
+	super()
 	shoot_timer.wait_time = shoot_interval
 	shoot_timer.start()
 	_start_pause()
 	animated_sprite.play("idle")
-	# Capture the generation after room_manager is set (set by room_def before _ready).
-	if room_manager:
-		_spawn_generation = room_manager._room_generation
 
 func _start_hop() -> void:
 	is_hopping = true
-	hop_timer.wait_time = HOP_DURATION
+	hop_timer.wait_time = hop_duration
 	hop_timer.start()
 
 func _start_pause() -> void:
 	is_hopping = false
-	hop_timer.wait_time = PAUSE_DURATION
+	hop_timer.wait_time = pause_duration
 	hop_timer.start()
 
 func _physics_process(delta: float) -> void:
 	if GameState.is_grace:
 		return
-	if player_instance.is_dead:
-		velocity = velocity.move_toward(Vector2.ZERO, 300 * delta)
-		move_and_slide()
-		return
 
-	if is_hopping:
-		var direction = (player_instance.global_position - global_position).normalized()
-		velocity = velocity.move_toward(direction * SPEED, 300 * delta)
-	else:
-		velocity = velocity.move_toward(Vector2.ZERO, 300 * delta)
-
+	var target_velocity := Vector2.ZERO
+	if is_hopping and not player_instance.is_dead:
+		target_velocity = direction_to_player() * move_speed
+	velocity = velocity.move_toward(target_velocity, ACCELERATION * delta)
 	move_and_slide()
 
 func _on_hop_timer_timeout() -> void:
@@ -87,7 +50,7 @@ func _on_hop_timer_timeout() -> void:
 		_start_hop()
 
 func _on_shoot_timer_timeout() -> void:
-	if GameState.is_grace or player_instance.is_dead or is_shooting:
+	if not can_attack() or is_shooting:
 		return
 	_shoot_with_animation()
 
@@ -97,25 +60,10 @@ func _shoot_with_animation() -> void:
 	await animated_sprite.animation_finished
 	if not is_instance_valid(self):
 		return
-	await get_tree().create_timer(0.45).timeout
+	await get_tree().create_timer(SHOOT_WINDUP).timeout
 	if not is_instance_valid(self):
 		return
-	if GameState.is_grace:
-		animated_sprite.play("idle")
-		is_shooting = false
-		return
-	var direction = (player_instance.global_position - global_position).normalized()
-	spawn_bullet(direction)
+	if not GameState.is_grace:
+		spawn_bullet(direction_to_player())
 	animated_sprite.play("idle")
 	is_shooting = false
-
-func spawn_bullet(dir: Vector2) -> void:
-	var bullet = bullet_scene.instantiate()
-	get_parent().add_child(bullet)
-	bullet.global_position = global_position
-	bullet.direction = dir.normalized()
-	bullet.speed = bullet_speed
-
-func _on_body_entered(body: Node2D) -> void:
-	if body.is_in_group("player") and body.has_method("player_hit"):
-		body.player_hit()
