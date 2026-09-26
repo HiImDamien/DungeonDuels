@@ -11,7 +11,13 @@ extends CanvasLayer
 ## pausing should stop working (e.g. once someone has won).
 
 const RESUME_COUNTDOWN := 3
-const TOAST_TIME := 1.5
+const MESSAGE_TIME := 1.5
+
+## Horizontal screen span (0–1) where each player's pause messages appear,
+## so they show up on that player's own side. Defaults fit the dungeon's
+## split screen; the final battle overrides them for its single arena.
+@export var p1_message_span := Vector2(0.0, 0.435)
+@export var p2_message_span := Vector2(0.56, 1.0)
 
 var enabled := true
 ## The player who paused (1 or 2), or 0 when not paused.
@@ -23,12 +29,16 @@ var _controls: ControlsScreen = null
 @onready var _root: Control = $Root
 @onready var _info: Label = $Root/Center/Panel/VBox/Info
 @onready var _menu: MenuList = $Root/Center/Panel/VBox/Menu
-@onready var _toast: Label = $Toast
+@onready var _messages := {1: $P1Message, 2: $P2Message}
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_root.hide()
-	_toast.hide()
+	for who in _messages:
+		var span: Vector2 = p1_message_span if who == 1 else p2_message_span
+		_messages[who].anchor_left = span.x
+		_messages[who].anchor_right = span.y
+		_messages[who].hide()
 	_menu.cancelled.connect(resume)
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -41,7 +51,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif who == paused_by and _controls == null and not _resuming:
 		resume()
 	elif who != paused_by and not _resuming:
-		_show_toast("Only P%d can resume" % paused_by)
+		_show_message(who, "Only P%d can resume" % paused_by)
 
 func can_pause() -> bool:
 	return enabled and not get_tree().paused and not _resuming and not GameState.is_grace
@@ -51,7 +61,7 @@ func try_pause(who: int) -> bool:
 	if who == 0 or not can_pause():
 		return false
 	if GameState.pauses_left[who] <= 0:
-		_show_toast("P%d has no pauses left" % who)
+		_show_message(who, "No pauses left")
 		return false
 
 	GameState.pauses_left[who] -= 1
@@ -96,16 +106,18 @@ func _on_quit_pressed() -> void:
 	MusicManager.stop_music()
 	get_tree().change_scene_to_file("res://scenes/ui/title_screen.tscn")
 
-func _show_toast(text: String) -> void:
-	_toast.text = text
-	_toast.show()
-	if _toast.has_meta("tween"):
-		var old: Tween = _toast.get_meta("tween")
+## Briefly shows `text` on `who`'s side of the screen.
+func _show_message(who: int, text: String) -> void:
+	var label: Label = _messages[who]
+	label.text = text
+	label.show()
+	if label.has_meta("tween"):
+		var old: Tween = label.get_meta("tween")
 		if old.is_valid():
 			old.kill()
-	_toast.modulate.a = 1.0
+	label.modulate.a = 1.0
 	var tween := create_tween()
-	_toast.set_meta("tween", tween)
-	tween.tween_interval(TOAST_TIME)
-	tween.tween_property(_toast, "modulate:a", 0.0, 0.3)
-	tween.tween_callback(_toast.hide)
+	label.set_meta("tween", tween)
+	tween.tween_interval(MESSAGE_TIME)
+	tween.tween_property(label, "modulate:a", 0.0, 0.3)
+	tween.tween_callback(label.hide)

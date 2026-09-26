@@ -147,6 +147,8 @@ func _test_pause(game: Node) -> void:
 	await press(JOY_BUTTON_START, 0)
 	await press(JOY_BUTTON_B, 0)
 	check(get_tree().paused and pause_menu._root.visible, "P1 can't resume or use P2's pause menu")
+	check(pause_menu._messages[1].visible and pause_menu._messages[1].text == "Only P2 can resume"
+		and not pause_menu._messages[2].visible, "P1 is told on their own side that only P2 can resume")
 
 	await press(JOY_BUTTON_DPAD_DOWN, 1)
 	await press(JOY_BUTTON_A, 1)
@@ -165,6 +167,8 @@ func _test_pause(game: Node) -> void:
 	GameState.pauses_left[1] = 0
 	await press_key(KEY_ESCAPE)
 	check(not get_tree().paused, "a player with no pauses left can't pause")
+	check(pause_menu._messages[1].visible and pause_menu._messages[1].text == "No pauses left",
+		"P1 sees 'No pauses left' on their side")
 	GameState.pauses_left[1] = GameState.PAUSES_PER_PLAYER
 	await press_key(KEY_ESCAPE)
 	check(get_tree().paused and pause_menu.paused_by == 1, "Esc pauses as P1")

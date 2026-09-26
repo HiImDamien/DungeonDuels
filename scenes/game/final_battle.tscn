@@ -58,3 +58,5 @@ texture_filter = 1
 layout_mode = 2
 
 [node name="PauseMenu" parent="." instance=ExtResource("9_pause")]
+p1_message_span = Vector2(0, 0.44)
+p2_message_span = Vector2(0.44, 0.88)
