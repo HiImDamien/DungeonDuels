@@ -79,6 +79,7 @@ radius = 5.0
 collision_layer = 2
 collision_mask = 15
 script = ExtResource("1_8jept")
+max_health = 20
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." unique_id=587083068]
 texture_filter = 1

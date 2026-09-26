@@ -16,14 +16,27 @@ const POLYGON_DISTANCE := 14.0
 # Captured from the scene in _ready() so we never hardcode the offset.
 var _base_position := Vector2.ZERO
 
-@export var MAX_HEALTH := 10:
+@export var max_health := 10:
 	set(value):
-		MAX_HEALTH = value
+		max_health = value
 		health = value
-		
-@export var cooldown_time := 2.2
-@export var recharge_interval := 0.3
-@export var recharge_delay := 0.5
+
+# Setting these also updates the matching timer, so upgrades apply immediately.
+@export var cooldown_time := 2.2:
+	set(value):
+		cooldown_time = value
+		if is_node_ready():
+			cooldown_timer.wait_time = value
+@export var recharge_interval := 0.3:
+	set(value):
+		recharge_interval = value
+		if is_node_ready():
+			recharge_timer.wait_time = value
+@export var recharge_delay := 0.5:
+	set(value):
+		recharge_delay = value
+		if is_node_ready():
+			recharge_delay_timer.wait_time = value
 
 signal shield_changed(health: int)
 
@@ -42,7 +55,7 @@ func _ready():
 	monitorable = false
 	visible = false
 	collision_polygon.disabled = true
-	health = MAX_HEALTH
+	health = max_health
 
 	cooldown_timer.wait_time = cooldown_time
 	cooldown_timer.one_shot = true
@@ -61,7 +74,7 @@ func set_aim_direction(new_direction: Vector2) -> void:
 # that lower health means a narrower blocking range.  Only scale.y is touched;
 # scale.x is left at 1.0 so the shield stays at the same distance from the player.
 func _update_size() -> void:
-	var t := clampf(float(health) / float(MAX_HEALTH), 0.0, 1.0)
+	var t := clampf(float(health) / float(max_health), 0.0, 1.0)
 	scale = Vector2.ONE * lerpf(0.15, 1.0, t)
 
 func activate():
@@ -88,7 +101,7 @@ func deactivate():
 	visible = false
 	collision_polygon.disabled = true
 
-	if not is_broken and not on_cooldown and health < MAX_HEALTH:
+	if not is_broken and not on_cooldown and health < max_health:
 		recharge_delay_timer.start()
 
 func take_damage(amount: int = 1) -> void:
@@ -96,7 +109,6 @@ func take_damage(amount: int = 1) -> void:
 		return
 
 	health -= amount
-	print("Shield hit, health:", health)
 
 	if health <= 0:
 		break_shield()
@@ -109,20 +121,18 @@ func break_shield() -> void:
 	recharge_delay_timer.stop()
 
 	deactivate()
-	print("Shield broke!")
 	cooldown_timer.start()
 
 func _on_cooldown_timer_timeout() -> void:
 	health = 1
 	is_broken = false
 	on_cooldown = false
-	print("Shield restored!")
 
-	if not is_active and health < MAX_HEALTH:
+	if not is_active and health < max_health:
 		recharge_timer.start()
 
 func _on_recharge_delay_timer_timeout() -> void:
-	if not is_active and not is_broken and not on_cooldown and health < MAX_HEALTH:
+	if not is_active and not is_broken and not on_cooldown and health < max_health:
 		recharge_timer.start()
 
 func _on_recharge_timer_timeout() -> void:
@@ -130,9 +140,8 @@ func _on_recharge_timer_timeout() -> void:
 		recharge_timer.stop()
 		return
 
-	if health < MAX_HEALTH:
+	if health < max_health:
 		health += 1
-		print("Shield recharged to:", health)
 	else:
 		recharge_timer.stop()
 
@@ -155,25 +164,4 @@ func reset() -> void:
 	is_broken = false
 	on_cooldown = false
 	deactivate()
-	health = MAX_HEALTH
-
-## Restores all upgrade-affected stats after a scene transition.
-## Must be called AFTER the shield node is in the scene tree (i.e. after _ready).
-## Updates both the exported values and their corresponding Timer wait_times so
-## the new values take effect immediately on the next timer cycle.
-func apply_stats(
-		p_max_health: int,
-		p_cooldown_time: float,
-		p_recharge_interval: float,
-		p_recharge_delay: float
-) -> void:
-	MAX_HEALTH              = p_max_health          # setter also sets health = value
-	cooldown_time           = p_cooldown_time
-	cooldown_timer.wait_time = p_cooldown_time
-	recharge_interval           = p_recharge_interval
-	recharge_timer.wait_time    = p_recharge_interval
-	recharge_delay              = p_recharge_delay
-	recharge_delay_timer.wait_time = p_recharge_delay
-
-func _on_area_entered(area):
-	pass
+	health = max_health

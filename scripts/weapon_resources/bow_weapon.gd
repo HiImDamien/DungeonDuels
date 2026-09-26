@@ -28,10 +28,6 @@ const MAX_BULLET_MODES := 2
 var bullet_modes: Array[String] = []
 var _burst_firing: bool = false   # prevents overlapping bursts
 
-func _ready() -> void:
-	super()
-	self.fire_rate = 0.3
-
 func add_bullet_mode(mode: String) -> void:
 	if mode in bullet_modes:
 		return
@@ -40,11 +36,6 @@ func add_bullet_mode(mode: String) -> void:
 		bullet_modes.pop_front()  # remove oldest
 
 	bullet_modes.append(mode)
-
-func set_bullet_mode(mode: String) -> void:
-	bullet_modes.clear()
-	if mode != "":
-		bullet_modes.append(mode)
 
 func has_bullet_mode(mode: String) -> bool:
 	return mode in bullet_modes

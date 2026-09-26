@@ -4,13 +4,10 @@ extends Control
 @onready var p2_opponent_ticker: Label = $HBoxContainer/RightPanel/RightSubViewportContainer/P2OpponentTicker
 
 func _ready() -> void:
-	# Always reset to DUNGEON so a rematch from the title screen starts clean.
-	GameState.phase = GameState.Phase.DUNGEON
 	MusicManager.play_game_music()
-	var overlay := preload("res://scripts/ui/grace_overlay.gd").new()
-	add_child(overlay)
-	GameState.start_match_timer()
-	GameState.start_grace_period()
+	add_child(preload("res://scripts/ui/grace_overlay.gd").new())
+	# Resets phase, stats and timer so a rematch from the title screen starts clean.
+	GameState.start_match()
 	GameState.timer_expired.connect(_on_timer_expired, CONNECT_ONE_SHOT)
 
 	# Opponent ticker — overlays the top of each player's viewport
@@ -25,17 +22,7 @@ func _process(delta: float) -> void:
 
 func _on_timer_expired() -> void:
 	# Snapshot player stats so the final battle can restore them
-	var players = get_tree().get_nodes_in_group("player")
-	var p1: CharacterBody2D = null
-	var p2: CharacterBody2D = null
-	for p in players:
-		if p.action_prefix == "":
-			p1 = p
-		elif p.action_prefix == "p2_":
-			p2 = p
-	if p1 and p2:
-		GameState.save_player_stats(p1, p2)
-
+	GameState.save_player_stats(get_tree().get_nodes_in_group("player"))
 	get_tree().change_scene_to_file("res://scenes/game/final_battle.tscn")
 
 # ── Opponent ticker ───────────────────────────────────────────────────────────

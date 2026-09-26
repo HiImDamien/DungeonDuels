@@ -3,7 +3,6 @@ class_name player
 enum State {ALIVE, DEAD}
 
 const BULLET = preload("res://scenes/player/player_bullet.tscn")
-const SHIELD = preload("res://scenes/player/shield.tscn")
 
 # Set to "p2_" for the second player so it reads p2_move_left, p2_shoot, etc.
 @export var action_prefix: String = ""
@@ -39,7 +38,6 @@ var invincible: bool = false:
 	set = _set_invincible
 
 var current_weapon: Node2D = null
-var weapon_ready: bool = false
 
 # True during the opening grace period; blocks shooting and shield use.
 var stunned: bool = true
@@ -50,7 +48,7 @@ var stunned: bool = true
 @onready var invincibility_timer: Timer = $InvincibilityTimer
 @onready var respawn_timer: Timer = $RespawnTimer
 @onready var animated_sprite: AnimatedSprite2D = $AnimatedSprite2D
-@onready var shield: Area2D = $Shield
+@onready var shield: Shield = $Shield
 
 func _set_invincible(value: bool) -> void:
 	if value:
@@ -97,17 +95,13 @@ func _physics_process(_delta: float) -> void:
 
 	var direction = Input.get_vector(action_prefix + "move_left", action_prefix + "move_right", action_prefix + "move_up", action_prefix + "move_down")
 	var facing = Input.get_axis(action_prefix + "move_left", action_prefix + "move_right")
-	var animation_state = 0
-	if direction != Vector2.ZERO:
-		animation_state = 1
-		direction = direction.normalized()
+	var moving: bool = direction != Vector2.ZERO
+	if moving:
 		animated_sprite.flip_h = facing < 0
-		velocity = direction * speed
-	else:
-		velocity = Vector2.ZERO
+	velocity = direction.normalized() * speed
 
 	if not invincible:
-		animated_sprite.play("Running" if animation_state == 1 else "idle")
+		animated_sprite.play("Running" if moving else "idle")
 
 	move_and_slide()
 
@@ -118,19 +112,11 @@ func _physics_process(_delta: float) -> void:
 			collider.velocity += velocity * 0.6
 
 func equip_weapon(weapon_scene: PackedScene) -> void:
-	weapon_ready = false
-
 	if current_weapon:
 		current_weapon.queue_free()
-		current_weapon = null
-
 	current_weapon = weapon_scene.instantiate()
-	weapon_holder.add_child(current_weapon)
 	current_weapon.owner_player = self
-
-	await current_weapon.ready
-
-	weapon_ready = true
+	weapon_holder.add_child(current_weapon)
 
 func player_hit(attacker = null) -> void:
 	if invincible or is_dead:
@@ -145,7 +131,6 @@ func player_hit(attacker = null) -> void:
 			attacker.kills += 1
 		die()
 	else:
-		print("Knight got hit, remaining health is ", health)
 		animated_sprite.play("Hit")
 		invincible = true
 
@@ -161,7 +146,6 @@ func die() -> void:
 	shield.deactivate()
 	shield.pause_regen()
 	aim_pivot.visible = false
-	print("Knight Died!")
 	animated_sprite.play("Death")
 
 	if is_final_death:
@@ -190,7 +174,6 @@ func _finish_respawn() -> void:
 	shield.reset()
 	aim_pivot.visible = true
 	animated_sprite.play("idle")
-	print("Knight respawned!")
 
 func _on_invincibility_timer_timeout() -> void:
 	invincible = false

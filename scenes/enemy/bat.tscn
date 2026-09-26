@@ -42,6 +42,7 @@ radius = 3.0
 collision_layer = 2
 collision_mask = 15
 script = ExtResource("1_2jyp7")
+max_health = 5
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." unique_id=586438869]
 texture_filter = 1
@@ -55,9 +56,6 @@ position = Vector2(-1, -7)
 shape = SubResource("CircleShape2D_vtaks")
 
 [node name="ShootTimer" type="Timer" parent="." unique_id=788700188]
-
-[node name="Rotater" type="Node2D" parent="." unique_id=550550837]
-position = Vector2(-1, -7)
 
 [node name="BurstTimer" type="Timer" parent="." unique_id=1010548930]
 

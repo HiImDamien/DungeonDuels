@@ -1,38 +1,24 @@
 extends Upgrade
 class_name shield_regen
 
-@export var cooldown_decrease = 0.5
-@export var recharge_interval_decrease = 0.1
-@export var recharge_delay_decrease = 0.2
+@export var cooldown_decrease := 0.5
+@export var recharge_interval_decrease := 0.1
+@export var recharge_delay_decrease := 0.2
 
-func _ready() -> void:
-	self.description = "Shield\nRegen"
-	body_entered.connect(_on_body_entered)
+## Timers can't run with a wait time of zero, so every stat bottoms out here.
+const MIN_TIME := 0.05
 
-func _on_body_entered(body: Node2D) -> void:
-	print(body)
-	if body.is_in_group("player"):
-		var shield: Shield = body.get_node("Shield")
-		if shield == null:
-			print("Shield is null, why's that huh?")
-		else:
-			var recharge_interval = shield.recharge_interval
-			var recharge_delay = shield.recharge_delay
-			var cooldown = shield.cooldown_time
-			
-			if cooldown != 0:
-				if cooldown - cooldown_decrease <= 0:
-					shield.cooldown_time = 0
-				else:
-					shield.cooldown_time = cooldown - cooldown_decrease
-			if recharge_interval != 0:
-				if recharge_interval - recharge_interval_decrease <= 0:
-					shield.recharge_interval = 0
-				else:
-					shield.recharge_interval = recharge_interval - recharge_interval_decrease 
-			if recharge_delay != 0:
-				if recharge_delay - recharge_delay_decrease <= 0:
-					shield.recharge_delay = 0
-				else:
-					shield.recharge_delay = recharge_delay - recharge_delay_decrease
-			self.on_item_pickup()
+func _init() -> void:
+	description = "Shield\nRegen"
+
+func is_available(p: CharacterBody2D) -> bool:
+	var shield: Shield = p.get_node("Shield")
+	return shield.cooldown_time > MIN_TIME \
+		or shield.recharge_interval > MIN_TIME \
+		or shield.recharge_delay > MIN_TIME
+
+func apply(p: CharacterBody2D) -> void:
+	var shield: Shield = p.get_node("Shield")
+	shield.cooldown_time     = maxf(shield.cooldown_time - cooldown_decrease, MIN_TIME)
+	shield.recharge_interval = maxf(shield.recharge_interval - recharge_interval_decrease, MIN_TIME)
+	shield.recharge_delay    = maxf(shield.recharge_delay - recharge_delay_decrease, MIN_TIME)

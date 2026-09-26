@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://db76jalv3wurj"]
 
 [ext_resource type="Script" uid="uid://daisfliwvfp0t" path="res://scripts/weapon_resources/weapon_pickup.gd" id="1_8i8db"]
-[ext_resource type="Texture2D" uid="uid://dw8hifk10drpw" path="res://Chest.png" id="2_8i8db"]
+[ext_resource type="Texture2D" uid="uid://dw8hifk10drpw" path="res://assets/sprites/chest.png" id="2_8i8db"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_aoepw"]
 size = Vector2(14, 11)

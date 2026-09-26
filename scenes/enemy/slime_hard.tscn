@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://b5ey18hm6xoeq"]
 
-[ext_resource type="Script" uid="uid://chw6iv48ifh3g" path="res://scripts/enemy/slime_hard.gd" id="1_i51ap"]
+[ext_resource type="Script" uid="uid://jgwndlk71qek" path="res://scripts/enemy/slime.gd" id="1_i51ap"]
 [ext_resource type="Texture2D" uid="uid://bxuouykvjdaje" path="res://assets/brackeys_platformer_assets/sprites/slime_purple.png" id="2_i51ap"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_u062j"]
@@ -93,6 +93,11 @@ radius = 5.0
 collision_layer = 2
 collision_mask = 15
 script = ExtResource("1_i51ap")
+max_health = 6
+bullet_speed = 120.0
+shoot_interval = 1.5
+pause_duration = 0.4
+move_speed = 55.0
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." unique_id=1743721846]
 texture_filter = 1

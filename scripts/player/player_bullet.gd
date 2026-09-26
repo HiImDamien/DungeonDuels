@@ -1,8 +1,5 @@
 extends Area2D
 
-@onready var kill_timer: Timer = $KillTimer
-@onready var sprite: Sprite2D = $Sprite2D
-
 var speed: float        = 200
 var direction: Vector2  = Vector2.RIGHT
 var damage: int         = 1
@@ -28,12 +25,6 @@ func apply_modes(modes: Array[String], owning_player) -> void:
 		damage = 2
 	if "tracking" in modes:
 		_is_tracking = true
-
-func apply_mode(mode: String, owning_player) -> void:
-	var arr: Array[String] = []
-	if mode != "":
-		arr.append(mode)
-	apply_modes(arr, owning_player)
 
 # ── Lifecycle ─────────────────────────────────────────────────────────────────
 

@@ -1,27 +1,31 @@
 extends Area2D
 class_name Upgrade
+## Base class for the pickups offered after clearing a room.
+##
+## To add a new upgrade: extend this, set `description` in _init(), override
+## apply() (and is_available() if it can max out), then add its scene to
+## UPGRADE_SCENES in room_manager.gd.
 
 var description: String = ""
 var room_manager = null
-# Called when the node enters the scene tree for the first time.
+
 func _ready() -> void:
-	pass # Replace with function body.
-# Override in subclasses to prevent this upgrade from entering the spawn pool
-# when a player no longer benefits from it. Called before the node is added to
-# the scene tree, so do not rely on @onready variables here.
+	body_entered.connect(_on_body_entered)
+
+## Whether this upgrade should be offered to (and can be picked up by) the
+## player. Called before the node enters the tree, so don't use @onready vars.
 func is_available(_player: CharacterBody2D) -> bool:
 	return true
 
-func disable():
-	for connection in body_entered.get_connections():
-		body_entered.disconnect(connection.callable)
-		
-func on_item_pickup():
-	disable()
+## Apply the upgrade's effect to the player who picked it up.
+func apply(_player: CharacterBody2D) -> void:
+	pass
+
+func _on_body_entered(body: Node2D) -> void:
+	if not body.is_in_group("player") or not is_available(body):
+		return
+	body_entered.disconnect(_on_body_entered)
+	apply(body)
 	if room_manager:
 		room_manager.on_upgrade_pickup(self)
 	queue_free()
-
-# Called every frame. 'delta' is the elapsed time since the previous frame.
-func _process(delta: float) -> void:
-	pass
