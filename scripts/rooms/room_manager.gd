@@ -4,14 +4,15 @@ extends Node
 ##
 ## Room sequence repeats every ROOMS_PER_CYCLE rooms, with the last one a boss:
 ## normal, normal, boss, normal, normal, boss, …
+##
+## Room layouts live in scenes/rooms/layouts/. To add one, make a new scene
+## inheriting room_base.tscn and drag it into Normal Rooms or Boss Rooms on
+## the RoomManager (scenes/rooms/room_manager.tscn) in the Inspector.
 
-const ROOM_SCENE = preload("res://scenes/rooms/room.tscn")
 const ROOMS_PER_CYCLE := 3
-const ROOM_CENTER := Vector2(80, 105)
 
-# ── Room type pools ───────────────────────────────────────────────────────────
-var normal_room_types: Array = [RoomDef2, RoomDef3, RoomDef4]
-var boss_room_type = RoomDef1
+@export var normal_rooms: Array[PackedScene] = []
+@export var boss_rooms: Array[PackedScene] = []
 
 # ── Stat upgrade pool (two are offered after every room) ─────────────────────
 const UPGRADE_SCENES = [
@@ -31,7 +32,7 @@ var enemies_remaining: int = 0
 var rooms_completed: int = 0
 var loading: bool = false
 
-var _last_normal_type = null
+var _last_normal_room: PackedScene = null
 var _offered_upgrades: Array[Upgrade] = []
 
 # ── Public API ────────────────────────────────────────────────────────────────
@@ -86,7 +87,7 @@ func _on_room_cleared() -> void:
 	# Move the player to the centre before upgrades appear so they can't
 	# accidentally walk into a pickup that spawns on top of them. Wait two
 	# physics frames so the new position registers before pickups go live.
-	player_instance.global_position = ROOM_CENTER
+	player_instance.global_position = current_room_node.player_spawn.global_position
 	player_instance.velocity = Vector2.ZERO
 	await get_tree().physics_frame
 	await get_tree().physics_frame
@@ -103,23 +104,23 @@ func _is_boss_room(room_index: int) -> bool:
 	return room_index % ROOMS_PER_CYCLE == ROOMS_PER_CYCLE - 1
 
 func _load_next_room() -> void:
-	var room: Node = ROOM_SCENE.instantiate()
-	world.add_child(room)
+	var scene: PackedScene
+	if _is_boss_room(rooms_completed):
+		scene = boss_rooms.pick_random()
+	else:
+		# Never repeat the same normal room twice in a row (if there's a choice).
+		var choices := normal_rooms.filter(func(r) -> bool: return r != _last_normal_room)
+		if choices.is_empty():
+			choices = normal_rooms
+		scene = choices.pick_random()
+		_last_normal_room = scene
 
+	var room: Node = scene.instantiate()
+	world.add_child(room)
 	if current_room_node:
 		current_room_node.queue_free()
 	current_room_node = room
-
-	var definition: RoomDefinition
-	if _is_boss_room(rooms_completed):
-		definition = boss_room_type.new()
-	else:
-		# Never repeat the same normal room twice in a row.
-		var choices := normal_room_types.filter(func(t) -> bool: return t != _last_normal_type)
-		_last_normal_type = choices.pick_random()
-		definition = _last_normal_type.new()
-
-	room.setup(definition, self)
+	room.setup(self)
 
 # ── Upgrades ──────────────────────────────────────────────────────────────────
 

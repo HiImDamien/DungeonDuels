@@ -63,6 +63,16 @@ func walk_onto(p: player, pickup: Area2D) -> void:
 	p.global_position = pickup.global_position
 	await wait(0.3)
 
+## Every room in the room manager's lists must have a player spawn and at
+## least one fully set-up enemy spawn.
+func _check_room_layout(scene: PackedScene) -> void:
+	var room := scene.instantiate()
+	var spawns: Array = room.get_node("EnemySpawns").get_children()
+	var complete := spawns.filter(func(s): return s is EnemySpawn and s.enemy_scene != null)
+	check(room.has_node("PlayerSpawn") and complete.size() > 0 and complete.size() == spawns.size(),
+		"%s: player spawn and %d enemy spawns, all with an enemy chosen" % [scene.resource_path.get_file(), complete.size()])
+	room.free()
+
 # ── The test ──────────────────────────────────────────────────────────────────
 
 func _run() -> void:
@@ -85,6 +95,11 @@ func _run() -> void:
 	check(enemies.all(func(e): return e.target == p1), "P1's enemies target P1")
 	check(enemies_near(p2).all(func(e): return e.target == p2), "P2's enemies target P2")
 	check(GameState.is_grace and p1.stunned, "grace period active at start")
+
+	print("Room layouts")
+	check(rm.normal_rooms.size() > 0 and rm.boss_rooms.size() > 0, "room manager has normal and boss rooms")
+	for scene: PackedScene in rm.normal_rooms + rm.boss_rooms:
+		_check_room_layout(scene)
 
 	await wait(3.2)
 	check(not GameState.is_grace and not p1.stunned, "grace period ends and players can shoot")
