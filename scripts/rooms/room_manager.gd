@@ -53,7 +53,7 @@ func register_room(room: Node, spawn_pos: Vector2, enemy_count: int) -> void:
 func on_upgrade_pickup(picked_upgrade: Upgrade) -> void:
 	# Bullet upgrades are the high-impact pickups — let the other side know
 	if picked_upgrade is BulletUpgrade:
-		GameState.notify_opponent(player_instance.action_prefix, "Opponent Got " + picked_upgrade.description)
+		GameState.notify_opponent(player_instance.player_index, "Opponent Got " + picked_upgrade.description)
 
 	for u in _offered_upgrades:
 		if u != picked_upgrade and is_instance_valid(u):
@@ -81,7 +81,7 @@ func _on_room_cleared() -> void:
 	rooms_completed += 1
 
 	if was_boss:
-		GameState.notify_opponent(player_instance.action_prefix, "Opponent Cleared Boss")
+		GameState.notify_opponent(player_instance.player_index, "Opponent Cleared Boss")
 
 	# Move the player to the centre before upgrades appear so they can't
 	# accidentally walk into a pickup that spawns on top of them. Wait two

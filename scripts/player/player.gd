@@ -4,8 +4,11 @@ enum State {ALIVE, DEAD}
 
 const BULLET = preload("res://scenes/player/player_bullet.tscn")
 
-# Set to "p2_" for the second player so it reads p2_move_left, p2_shoot, etc.
-@export var action_prefix: String = ""
+## 1 or 2. Player 2 reads the "p2_" input actions (p2_move_left, p2_shoot, …).
+@export_range(1, 2) var player_index: int = 1
+
+# Prefix for this player's input action names; set from player_index in _ready().
+var _input_prefix: String = ""
 
 var last_aim = Vector2.RIGHT
 var speed: float = 75.0
@@ -56,6 +59,7 @@ func _set_invincible(value: bool) -> void:
 	invincible = value
 
 func _ready() -> void:
+	_input_prefix = "" if player_index == 1 else "p%d_" % player_index
 	health = max_health
 	motion_mode = CharacterBody2D.MOTION_MODE_FLOATING
 	safe_margin = 0.08
@@ -68,14 +72,14 @@ func _process(_delta: float) -> void:
 	if is_dead:
 		return
 
-	var aim = Input.get_vector(action_prefix + "aim_left", action_prefix + "aim_right", action_prefix + "aim_up", action_prefix + "aim_down")
+	var aim = Input.get_vector(_input_prefix + "aim_left", _input_prefix + "aim_right", _input_prefix + "aim_up", _input_prefix + "aim_down")
 	if aim.length() > 0.2:
 		last_aim = aim.normalized()
 
 	aim_pivot.rotation = last_aim.angle()
 	shield.set_aim_direction(last_aim)
 
-	var shield_pressed = Input.is_action_pressed(action_prefix + "shield_activate")
+	var shield_pressed = Input.is_action_pressed(_input_prefix + "shield_activate")
 
 	# Shield is always available (even during grace stun).
 	if shield_pressed and not shield.is_broken and not shield.on_cooldown:
@@ -85,7 +89,7 @@ func _process(_delta: float) -> void:
 
 	# Shooting is locked during the grace period only.
 	if not stunned:
-		if Input.is_action_pressed(action_prefix + "shoot") and not shield_pressed:
+		if Input.is_action_pressed(_input_prefix + "shoot") and not shield_pressed:
 			if current_weapon:
 				current_weapon.try_fire(last_aim)
 
@@ -93,8 +97,8 @@ func _physics_process(_delta: float) -> void:
 	if is_dead:
 		return
 
-	var direction = Input.get_vector(action_prefix + "move_left", action_prefix + "move_right", action_prefix + "move_up", action_prefix + "move_down")
-	var facing = Input.get_axis(action_prefix + "move_left", action_prefix + "move_right")
+	var direction = Input.get_vector(_input_prefix + "move_left", _input_prefix + "move_right", _input_prefix + "move_up", _input_prefix + "move_down")
+	var facing = Input.get_axis(_input_prefix + "move_left", _input_prefix + "move_right")
 	var moving: bool = direction != Vector2.ZERO
 	if moving:
 		animated_sprite.flip_h = facing < 0

@@ -27,27 +27,28 @@ signal grace_tick(seconds_left: int)
 signal grace_ended
 signal grace_cleared
 
-# ── Player stats (keyed by the player's action_prefix) ────────────────────────
+# ── Player stats (keyed by player_index) ──────────────────────────────────────
 
 var player_stats := {
-	"": PlayerStats.new(),
-	"p2_": PlayerStats.new(),
+	1: PlayerStats.new(),
+	2: PlayerStats.new(),
 }
 
 # ── Opponent event ticker ─────────────────────────────────────────────────────
 
-signal opponent_event(from_prefix: String, message: String)
+signal opponent_event(from_player: int, message: String)
 
-func notify_opponent(from_prefix: String, message: String) -> void:
-	opponent_event.emit(from_prefix, message)
+## Show `message` on the screen of whoever is NOT from_player.
+func notify_opponent(from_player: int, message: String) -> void:
+	opponent_event.emit(from_player, message)
 
 # ── Match lifecycle ───────────────────────────────────────────────────────────
 
 ## Resets everything for a fresh match (including rematches from the menu).
 func start_match() -> void:
 	phase = Phase.DUNGEON
-	for prefix in player_stats:
-		player_stats[prefix] = PlayerStats.new()
+	for index in player_stats:
+		player_stats[index] = PlayerStats.new()
 	time_remaining = MATCH_DURATION
 	_last_whole_second = int(ceil(time_remaining))
 	_timer_active = true
@@ -81,7 +82,7 @@ func start_grace_period() -> void:
 
 func save_player_stats(players: Array) -> void:
 	for p: player in players:
-		player_stats[p.action_prefix].capture(p)
+		player_stats[p.player_index].capture(p)
 
 func stats_for(p: player) -> PlayerStats:
-	return player_stats[p.action_prefix]
+	return player_stats[p.player_index]

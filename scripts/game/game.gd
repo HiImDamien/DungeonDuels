@@ -27,9 +27,9 @@ func _on_timer_expired() -> void:
 
 # ── Opponent ticker ───────────────────────────────────────────────────────────
 
-func _on_opponent_event(from_prefix: String, message: String) -> void:
+func _on_opponent_event(from_player: int, message: String) -> void:
 	# Show the message on the OPPOSITE player's screen.
-	if from_prefix == "":
+	if from_player == 1:
 		_flash_ticker(p2_opponent_ticker, message)
 	else:
 		_flash_ticker(p1_opponent_ticker, message)
