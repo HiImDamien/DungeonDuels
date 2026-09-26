@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://bweoohpq1qse2"]
 
-[ext_resource type="Script" uid="uid://dxp57cyvc7r4n" path="res://scripts/upgrades/shield_max.gd" id="1_d648l"]
+[ext_resource type="Script" uid="uid://bwn3o3idilk56" path="res://scripts/upgrades/shield_max.gd" id="1_d648l"]
 [ext_resource type="Texture2D" uid="uid://caxwmamevppob" path="res://assets/brackeys_platformer_assets/sprites/fruit.png" id="2_4jyhe"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_sc8ot"]
