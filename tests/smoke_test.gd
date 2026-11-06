@@ -79,6 +79,41 @@ func press_key(key: Key) -> void:
 		Input.parse_input_event(event)
 		await get_tree().process_frame
 
+## Holds `keys` down together for `seconds`, then releases them.
+func hold_keys(keys: Array, seconds: float) -> void:
+	_send_keys(keys, true)
+	await wait(seconds)
+	_send_keys(keys, false)
+	await get_tree().process_frame
+
+func _send_keys(keys: Array, pressed: bool) -> void:
+	for key: Key in keys:
+		var event := InputEventKey.new()
+		event.physical_keycode = key
+		event.keycode = key
+		event.pressed = pressed
+		Input.parse_input_event(event)
+
+## Arrow keys aim and fire (#16); shielding blocks it and E no longer shoots.
+func _test_keyboard_shooting(p: player) -> void:
+	var weapon: Node2D = p.current_weapon
+	var cooldown: float = weapon.fire_rate + 0.05
+	var fired_at: float = weapon.last_fire_time
+	await hold_keys([KEY_RIGHT], 0.1)
+	check(weapon.last_fire_time > fired_at and p.last_aim == Vector2.RIGHT,
+		"holding Right aims right and fires")
+
+	await wait(cooldown)
+	fired_at = weapon.last_fire_time
+	await hold_keys([KEY_SPACE, KEY_UP], 0.1)
+	check(weapon.last_fire_time == fired_at and p.last_aim == Vector2.UP,
+		"Space + Up aims up but the shield blocks firing")
+
+	await wait(cooldown)
+	fired_at = weapon.last_fire_time
+	await hold_keys([KEY_E], 0.1)
+	check(weapon.last_fire_time == fired_at, "E no longer shoots")
+
 ## Moves the player onto a pickup so real physics triggers the pickup.
 func walk_onto(p: player, pickup: Area2D) -> void:
 	p.global_position = pickup.global_position
@@ -163,8 +198,15 @@ func _test_title_and_controls() -> Node:
 		"controller labels come from the input map")
 	check(InputLabels.keyboard_label(["move_up", "move_left", "move_down", "move_right"]) == "W A S D"
 		and InputLabels.keyboard_label(["aim_up", "aim_left", "aim_down", "aim_right"]) == "Arrow Keys"
-		and InputLabels.keyboard_label(["shoot"]) == "E",
+		and InputLabels.keyboard_label(["shoot"]) == "Arrow Keys",
 		"keyboard labels come from the input map")
+	var font: Font = ControlsScreen.FONT
+	var lines := ControlsScreen.keyboard_lines()
+	var widest := 0.0
+	for line in lines:
+		widest = maxf(widest, font.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x)
+	check("Aim + Shoot: Arrow Keys" in lines[0] and widest <= title.get_viewport_rect().size.x,
+		"keyboard controls read 'Aim + Shoot: Arrow Keys' and fit on screen (%dpx)" % widest)
 	await press(JOY_BUTTON_B, 0)
 	await get_tree().process_frame
 	check(title.get_children().filter(func(c): return c is ControlsScreen).is_empty() and title.menu.active,
@@ -251,6 +293,7 @@ func _run() -> void:
 
 	await wait(3.2)
 	check(not GameState.is_grace and not p1.stunned, "grace period ends and players can shoot")
+	await _test_keyboard_shooting(p1)
 
 	print("Combat")
 	var enemy = enemies[0]

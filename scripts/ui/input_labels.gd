@@ -52,17 +52,22 @@ static func controller_label(action: String) -> String:
 		"rb": return "RB / R1"
 	return "-"
 
-## Keyboard keys for a row's actions, e.g. "W A S D", "Arrow Keys" or "E".
+## Keyboard keys for a row's actions, e.g. "W A S D", "Arrow Keys" or "Space".
+## Multi-action rows (Move) use each action's first key; a single action (Shoot)
+## lists all of its keys, since one action can be bound to several.
 static func keyboard_label(actions: Array) -> String:
 	var keys: Array[String] = []
 	for action: String in actions:
 		for event in InputMap.action_get_events(action):
 			if event is InputEventKey:
 				keys.append(_key_name(event))
-				break
+				if actions.size() > 1:
+					break
 	if keys.is_empty():
 		return "-"
-	if keys == ["Up", "Left", "Down", "Right"]:
+	var sorted := keys.duplicate()
+	sorted.sort()
+	if sorted == ["Down", "Left", "Right", "Up"]:
 		return "Arrow Keys"
 	return " ".join(keys)
 
