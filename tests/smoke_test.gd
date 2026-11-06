@@ -94,6 +94,43 @@ func _check_room_layout(scene: PackedScene) -> void:
 		"%s: player spawn and %d enemy spawns, all with an enemy chosen" % [scene.resource_path.get_file(), complete.size()])
 	room.free()
 
+func _key_event(key: Key) -> InputEventKey:
+	var event := InputEventKey.new()
+	event.physical_keycode = key
+	event.keycode = key
+	event.pressed = true
+	return event
+
+func _button_event(button: JoyButton) -> InputEventJoypadButton:
+	var event := InputEventJoypadButton.new()
+	event.button_index = button
+	event.pressed = true
+	return event
+
+## Which buttons leave the win screen, and that none of them is a gameplay
+## control (players keep playing after the win to celebrate).
+func _check_win_screen(battle: Node) -> void:
+	var exits := [_button_event(JOY_BUTTON_A), _button_event(JOY_BUTTON_Y),
+		_key_event(KEY_ENTER), _key_event(KEY_KP_ENTER), _key_event(KEY_ESCAPE)]
+	var non_exits := [_key_event(KEY_SPACE), _button_event(JOY_BUTTON_B),
+		_button_event(JOY_BUTTON_START), _button_event(JOY_BUTTON_RIGHT_SHOULDER)]
+	check(exits.all(battle.is_exit_event) and not non_exits.any(battle.is_exit_event),
+		"A, Y, Enter and Esc leave the win screen; Space, B, Start and RB don't")
+
+	var clashes: Array[String] = []
+	for action in InputMap.get_actions():
+		if action.begins_with("ui_") or action == "pause":  # pause is off after the win
+			continue
+		for event in InputMap.action_get_events(action):
+			if battle.is_exit_event(event):
+				clashes.append(action)
+	check(clashes.is_empty(), "no gameplay action uses a win-screen exit button %s" % str(clashes))
+
+	var hints: Array = battle.get_children().filter(func(c): return c is Label and c.text == battle.WIN_HINT)
+	var ascii := Array(battle.WIN_HINT.to_utf8_buffer()).all(func(b): return b < 128)
+	check(hints.size() == 1 and ascii and "Enter" in battle.WIN_HINT and "A / Cross" in battle.WIN_HINT
+		and "Y / Triangle" in battle.WIN_HINT, "win hint is shown, plain ASCII, and names Enter, A and Y")
+
 ## Returns the game scene, started by pressing Play on the title screen.
 func _test_title_and_controls() -> Node:
 	print("Title screen and controls")
@@ -301,10 +338,16 @@ func _run() -> void:
 		func(c): return c is Label and c.text.ends_with("Wins!"))
 	check(win_labels.size() == 1 and win_labels[0].text == "P1 Wins!", "eliminating P2 shows 'P1 Wins!'")
 
-	print("Back to the menu and rematch")
-	await press(JOY_BUTTON_Y, 0)
+	var battle := get_tree().current_scene
+	_check_win_screen(battle)
+	await press_key(KEY_SPACE)
 	await wait(0.3)
-	check(get_tree().current_scene.name == "TitleScreen", "Y on the win screen returns to the title")
+	check(get_tree().current_scene == battle, "Space (P1's shield) doesn't leave the win screen")
+
+	print("Back to the menu and rematch")
+	await press_key(KEY_ENTER)
+	await wait(0.3)
+	check(get_tree().current_scene.name == "TitleScreen", "Enter on the win screen returns to the title")
 	await press(JOY_BUTTON_A, 0)
 	await wait(0.3)
 	check(get_tree().current_scene.name == "Game", "Play starts a rematch")
