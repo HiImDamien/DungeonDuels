@@ -8,7 +8,7 @@ extends VBoxContainer
 ##   Back:     B / ○, Backspace  → emits `cancelled`
 ##
 ## Set `controlling_player` to only accept input from one player
-## (keyboard and controller 1 are P1, controller 2 is P2).
+## (whichever devices picked each side on the join screen; see PlayerDevices).
 
 signal cancelled
 
@@ -26,13 +26,9 @@ var selected: int = 0
 # Per-device flag so holding the stick moves the selection only once.
 var _stick_held := {}
 
-## Which player an input event came from, or 0 if it can't be told.
+## Which player an input event came from, or 0 if its device hasn't joined.
 static func player_for_event(event: InputEvent) -> int:
-	if event is InputEventKey:
-		return 1
-	if event is InputEventJoypadButton or event is InputEventJoypadMotion:
-		return event.device + 1
-	return 0
+	return PlayerDevices.player_for_event(event)
 
 func _ready() -> void:
 	for button in get_buttons():

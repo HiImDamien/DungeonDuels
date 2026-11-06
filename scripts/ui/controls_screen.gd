@@ -1,7 +1,7 @@
 class_name ControlsScreen
 extends Control
 ## Full-screen overlay showing the controller layout (as a diagram) and the
-## keyboard keys for P1. Opened from the title screen and the pause menu.
+## keyboard keys. Opened from the title screen and the pause menu.
 ## Emits `closed` and frees itself when the player backs out.
 
 signal closed
@@ -31,12 +31,21 @@ func _ready() -> void:
 	diagram.size = ControllerDiagram.DESIGN_SIZE
 	add_child(diagram)
 
-	_add_label("KEYBOARD (P1)", FONT_BOLD, 8, GOLD, 142)
+	_add_label(keyboard_heading(), FONT_BOLD, 8, GOLD, 142)
 	var lines := keyboard_lines()
 	_add_label(lines[0], FONT, 8, Color.WHITE, 154)
 	_add_label(lines[1], FONT, 8, Color.WHITE, 164)
 
 	_add_label("B / Circle  or  Esc:  Back", FONT, 8, GRAY, 186)
+
+## "KEYBOARD (P2)" for whoever picked the keyboard on the join screen,
+## "KEYBOARD (NOT IN USE)" if two controllers joined, or just "KEYBOARD" before
+## anyone has joined.
+static func keyboard_heading() -> String:
+	if not PlayerDevices.is_assigned():
+		return "KEYBOARD"
+	var who := PlayerDevices.keyboard_owner()
+	return "KEYBOARD (P%d)" % who if who != 0 else "KEYBOARD (NOT IN USE)"
 
 ## The two lines of keyboard keys. Rows bound to the same keys are merged
 ## (arrows both aim and shoot, so "Aim + Shoot: Arrow Keys"); line 1 holds

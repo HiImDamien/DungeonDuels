@@ -1,6 +1,8 @@
 class_name InputLabels
 ## Turns the Input Map into readable labels for the Controls screen, so it
-## always matches Project Settings → Input Map. Controller names show both
+## always matches Project Settings → Input Map. Reads the bindings as saved
+## (PlayerDevices.template_events), not the live per-player rebinding, so the
+## labels don't change with who picked which side. Controller names show both
 ## layouts, e.g. "RT / R2". PlayStation face buttons are spelled out
 ## ("A / Cross") because the pixel font has no ✕ ○ △ □ glyphs.
 
@@ -17,7 +19,7 @@ const ROWS := [
 ## Short id of the physical controller input an action uses — "left_stick",
 ## "rt", "start", … — so the diagram knows where to point. "" if none.
 static func controller_id(action: String) -> String:
-	for event in InputMap.action_get_events(action):
+	for event in PlayerDevices.template_events(action, false):
 		if event is InputEventJoypadMotion:
 			match event.axis:
 				JOY_AXIS_LEFT_X, JOY_AXIS_LEFT_Y: return "left_stick"
@@ -58,7 +60,7 @@ static func controller_label(action: String) -> String:
 static func keyboard_label(actions: Array) -> String:
 	var keys: Array[String] = []
 	for action: String in actions:
-		for event in InputMap.action_get_events(action):
+		for event in PlayerDevices.template_events(action, true):
 			if event is InputEventKey:
 				keys.append(_key_name(event))
 				if actions.size() > 1:
