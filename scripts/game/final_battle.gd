@@ -6,7 +6,7 @@ const P2_BULLET_COLOR := Color(1.0, 0.25, 0.25)
 const PLAYER_SCENE := preload("res://scenes/player/Player.tscn")
 ## Plain ASCII on purpose: on desktop, symbols like △ render through system
 ## fallback fonts, but web builds can't reach those and show a box instead.
-const WIN_HINT := "Enter or Esc  -  A / Cross  -  Y / Triangle\nto return to menu"
+const WIN_HINT := "Enter  or  A / Cross  to return to menu"
 
 @onready var world: Node2D = $HBoxContainer/BattlePanel/SubViewportContainer/SubViewport/FinalBattleWorld
 @onready var _hud: Control  = $HBoxContainer/CenterPanel/HUD
@@ -70,6 +70,7 @@ func _show_winner(text: String) -> void:
 ## Whether `event` leaves the win screen. Deliberately avoids every gameplay
 ## binding (Space is P1's shield) so players keep their controls to celebrate.
 ## Enter matters on web: in browser fullscreen, Esc only exits fullscreen.
+## The hint names only Enter and A; Esc and Y still work for old habits.
 static func is_exit_event(event: InputEvent) -> bool:
 	return MenuList._button(event, JOY_BUTTON_A) or MenuList._button(event, JOY_BUTTON_Y) \
 		or MenuList._key(event, [KEY_ENTER, KEY_KP_ENTER, KEY_ESCAPE])

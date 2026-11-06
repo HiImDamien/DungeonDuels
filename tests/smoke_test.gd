@@ -128,8 +128,8 @@ func _check_win_screen(battle: Node) -> void:
 
 	var hints: Array = battle.get_children().filter(func(c): return c is Label and c.text == battle.WIN_HINT)
 	var ascii := Array(battle.WIN_HINT.to_utf8_buffer()).all(func(b): return b < 128)
-	check(hints.size() == 1 and ascii and "Enter" in battle.WIN_HINT and "A / Cross" in battle.WIN_HINT
-		and "Y / Triangle" in battle.WIN_HINT, "win hint is shown, plain ASCII, and names Enter, A and Y")
+	check(hints.size() == 1 and ascii and "Enter" in battle.WIN_HINT and "A / Cross" in battle.WIN_HINT,
+		"win hint is shown, plain ASCII, and names Enter and A")
 
 ## Returns the game scene, started by pressing Play on the title screen.
 func _test_title_and_controls() -> Node:
