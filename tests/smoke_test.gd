@@ -106,6 +106,15 @@ func _test_title_and_controls() -> Node:
 	var names: Array = title.menu.get_buttons().map(func(b): return b.text)
 	check(names == ["PLAY", "CONTROLS", "QUIT"], "title menu is Play, Controls, Quit")
 
+	# Headless runs can't have the "web" feature tag, so hide Quit by hand.
+	title.show_quit(false)
+	names = title.menu.get_buttons().map(func(b): return b.text)
+	await press(JOY_BUTTON_DPAD_DOWN, 0)
+	await press(JOY_BUTTON_DPAD_DOWN, 0)
+	check(names == ["PLAY", "CONTROLS"] and title.menu.selected == 0,
+		"without Quit (web) the menu is Play, Controls and Down wraps back to Play")
+	title.show_quit(true)
+
 	await press(JOY_BUTTON_DPAD_DOWN, 0)
 	await press(JOY_BUTTON_A, 0)
 	var screens: Array = title.get_children().filter(func(c): return c is ControlsScreen)
