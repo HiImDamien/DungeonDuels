@@ -15,7 +15,7 @@ GODOT=/path/to/Godot tests/run_smoke_test.sh  # if `godot` isn't on PATH
 
 - The runner first does `godot --headless --editor --quit` to import, so new `class_name` scripts get registered, and then runs `res://tests/smoke_test.tscn`.
 - A run fails if the summary line isn't `N checks, 0 failed`, if any `SCRIPT ERROR` is logged, or if it hangs longer than 180s.
-- There is one test (`tests/smoke_test.gd`) and no way to run part of it. To try a section, open `smoke_test.tscn` in the editor and press F6, or temporarily cut down `_run()`.
+- There is one test (`tests/smoke_test.gd`) and no way to run part of it. To try a section, open `smoke_test.tscn` in the editor and run the current scene (F6, or ⌘R on macOS), or temporarily cut down `_run()`.
 - There is no linter or build step.
 - Godot generates a `.uid` file next to each script on import, and these are tracked in git. Commit the `.uid` that the runner's import step creates along with any new script.
 

@@ -1,7 +1,7 @@
 extends Node
 ## End-to-end smoke test: plays a real match headless and checks the core loop
 ## still works. Run it with tests/run_smoke_test.sh (or open smoke_test.tscn in
-## the editor and press F6). Exits with the number of failed checks.
+## the editor and press F6, or ⌘R on macOS). Exits with the number of failed checks.
 ##
 ## It drives the real game scenes, so it catches broken wiring that a play-test
 ## would, but it can't tell you whether the game *feels* right — still play it.
