@@ -44,8 +44,8 @@ func _ready() -> void:
 	add_child(bg)
 
 	_label("CHOOSE YOUR SIDE", ControlsScreen.FONT_BOLD, 16, Color.WHITE, Vector2(0, 6), Vector2(365, 20))
-	_side_labels[LEFT] = _side_box("P1 - LEFT SCREEN", P1_COLOR, 10)
-	_side_labels[RIGHT] = _side_box("P2 - RIGHT SCREEN", P2_COLOR, 235)
+	_side_labels[LEFT] = _side_box("P1 - LEFT SIDE", P1_COLOR, 10)
+	_side_labels[RIGHT] = _side_box("P2 - RIGHT SIDE", P2_COLOR, 235)
 	_middle_label = _label("", ControlsScreen.FONT, 8, Color.WHITE, Vector2(130, 60), Vector2(105, 60))
 	_label("Any button: join      Left / Right: pick side", ControlsScreen.FONT, 8, GRAY, Vector2(0, 150), Vector2(365, 10))
 	_label("A / Enter: ready      B / Backspace: back", ControlsScreen.FONT, 8, GRAY, Vector2(0, 162), Vector2(365, 10))
