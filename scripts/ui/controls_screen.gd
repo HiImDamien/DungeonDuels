@@ -32,13 +32,30 @@ func _ready() -> void:
 	add_child(diagram)
 
 	_add_label("KEYBOARD (P1)", FONT_BOLD, 8, GOLD, 142)
-	var parts: Array[String] = []
-	for row in InputLabels.ROWS:
-		parts.append("%s: %s" % [row[0], InputLabels.keyboard_label(row[1])])
-	_add_label("    ".join(parts.slice(0, 3)), FONT, 8, Color.WHITE, 154)
-	_add_label("    ".join(parts.slice(3)), FONT, 8, Color.WHITE, 164)
+	var lines := keyboard_lines()
+	_add_label(lines[0], FONT, 8, Color.WHITE, 154)
+	_add_label(lines[1], FONT, 8, Color.WHITE, 164)
 
 	_add_label("B / Circle  or  Esc:  Back", FONT, 8, GRAY, 186)
+
+## The two lines of keyboard keys. Rows bound to the same keys are merged
+## (arrows both aim and shoot, so "Aim + Shoot: Arrow Keys"); line 1 holds
+## the first two entries, line 2 the rest.
+static func keyboard_lines() -> Array[String]:
+	var names: Array[String] = []
+	var keys: Array[String] = []
+	for row in InputLabels.ROWS:
+		var label := InputLabels.keyboard_label(row[1])
+		var same := keys.find(label)
+		if same != -1 and label != "-":
+			names[same] += " + " + row[0]
+		else:
+			names.append(row[0])
+			keys.append(label)
+	var parts: Array[String] = []
+	for i in names.size():
+		parts.append("%s: %s" % [names[i], keys[i]])
+	return ["    ".join(parts.slice(0, 2)), "    ".join(parts.slice(2))]
 
 func _add_label(text: String, font: Font, font_size: int, color: Color, y: float) -> Label:
 	var label := Label.new()
