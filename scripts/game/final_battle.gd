@@ -64,19 +64,17 @@ func _show_winner(text: String) -> void:
 	hint.add_theme_color_override("font_color", Color(1.0, 1.0, 0.5, 1.0))
 	add_child(hint)
 
+## Whether `event` leaves the win screen. Deliberately avoids every gameplay
+## binding (Space is P1's shield) so players keep their controls to celebrate.
+## Enter matters on web: in browser fullscreen, Esc only exits fullscreen.
+static func is_exit_event(event: InputEvent) -> bool:
+	return MenuList._button(event, JOY_BUTTON_A) or MenuList._button(event, JOY_BUTTON_Y) \
+		or MenuList._key(event, [KEY_ENTER, KEY_KP_ENTER, KEY_ESCAPE])
+
 func _unhandled_input(event: InputEvent) -> void:
-	if not _game_over:
+	if not _game_over or not is_exit_event(event):
 		return
-	var pressed_y: bool = (
-		event is InputEventJoypadButton
-		and event.pressed
-		and event.button_index == JOY_BUTTON_Y
-	)
-	var pressed_esc: bool = (
-		event is InputEventKey
-		and event.pressed
-		and event.keycode == KEY_ESCAPE
-	)
-	if pressed_y or pressed_esc:
-		MusicManager.stop_music()
-		get_tree().change_scene_to_file("res://scenes/ui/title_screen.tscn")
+	# Mark handled before changing scene; afterwards there's no viewport.
+	get_viewport().set_input_as_handled()
+	MusicManager.stop_music()
+	get_tree().change_scene_to_file("res://scenes/ui/title_screen.tscn")
