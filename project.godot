@@ -19,6 +19,7 @@ config/icon="res://icon.svg"
 
 GameState="*res://scripts/game/game_state.gd"
 MusicManager="*res://scripts/audio/music_manager.gd"
+PlayerDevices="*res://scripts/game/player_devices.gd"
 
 [display]
 
