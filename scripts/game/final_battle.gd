@@ -4,6 +4,9 @@ const P1_SPAWN := Vector2(80, 100)
 const P2_SPAWN := Vector2(220, 100)
 const P2_BULLET_COLOR := Color(1.0, 0.25, 0.25)
 const PLAYER_SCENE := preload("res://scenes/player/Player.tscn")
+## Plain ASCII on purpose: on desktop, symbols like △ render through system
+## fallback fonts, but web builds can't reach those and show a box instead.
+const WIN_HINT := "Enter or Esc  -  A / Cross  -  Y / Triangle\nto return to menu"
 
 @onready var world: Node2D = $HBoxContainer/BattlePanel/SubViewportContainer/SubViewport/FinalBattleWorld
 @onready var _hud: Control  = $HBoxContainer/CenterPanel/HUD
@@ -55,7 +58,7 @@ func _show_winner(text: String) -> void:
 	add_child(label)
 
 	var hint := Label.new()
-	hint.text = "Press  Y / △  to return to menu"
+	hint.text = WIN_HINT
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hint.vertical_alignment   = VERTICAL_ALIGNMENT_BOTTOM
 	hint.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
