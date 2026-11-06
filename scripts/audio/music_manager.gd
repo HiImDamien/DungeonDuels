@@ -9,6 +9,8 @@ const GAME_MUSIC := preload("res://assets/music/HoliznaCC0 - Mutant Club.mp3")
 var _player: AudioStreamPlayer
 
 func _ready() -> void:
+	# Keep the music going while the game is paused.
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	_player = AudioStreamPlayer.new()
 	_player.stream = GAME_MUSIC
 	_player.bus = "Master"

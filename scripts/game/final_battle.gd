@@ -14,7 +14,9 @@ func _ready() -> void:
 	GameState.phase = GameState.Phase.FINAL_BATTLE
 	_hud.hide_timer()
 	_spawn_players()
-	add_child(preload("res://scripts/ui/grace_overlay.gd").new())
+	var overlay := CountdownOverlay.new()
+	add_child(overlay)
+	overlay.follow_grace_period()
 	GameState.start_grace_period.call_deferred()
 
 func _spawn_players() -> void:
@@ -33,6 +35,7 @@ func _spawn_player(index: int, spawn: Vector2) -> player:
 
 func _on_player_eliminated(loser: player) -> void:
 	_game_over = true
+	$PauseMenu.enabled = false
 	var winner := 2 if loser.player_index == 1 else 1
 	_show_winner("P%d Wins!" % winner)
 

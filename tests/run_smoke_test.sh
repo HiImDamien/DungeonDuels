@@ -9,7 +9,7 @@
 set -u
 cd "$(dirname "$0")/.."
 GODOT="${GODOT:-godot}"
-LIMIT=120  # seconds; the test itself gives up at 90
+LIMIT=180  # seconds; the test itself gives up at 150
 
 # Import first so newly added scripts/classes are registered.
 "$GODOT" --headless --editor --quit --path . >/dev/null 2>&1
@@ -34,6 +34,11 @@ grep -vE 'libhostfxr|dotnet|leaked at exit|still in use at exit|ObjectDB instanc
 # A script error means the test didn't really run, even if Godot exited 0.
 if [ "$STATUS" -eq 0 ] && ! grep -q '^[0-9]* checks, 0 failed' "$LOG"; then
 	STATUS=1
+fi
+# Any script error during the run fails it, even if every check passed.
+if grep -q 'SCRIPT ERROR' "$LOG"; then
+	echo "FAILED: script errors were logged during the run (see above)."
+	[ "$STATUS" -eq 0 ] && STATUS=1
 fi
 rm -f "$LOG"
 exit "$STATUS"

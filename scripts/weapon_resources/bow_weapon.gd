@@ -76,7 +76,7 @@ func _fire_burst(direction: Vector2) -> void:
 			break
 		_fire_volley(direction)
 		if i < BURST_COUNT - 1:
-			await get_tree().create_timer(BURST_INTERVAL).timeout
+			await get_tree().create_timer(BURST_INTERVAL, false).timeout
 	_burst_firing = false
 
 # ── Spawn helpers ─────────────────────────────────────────────────────────────
