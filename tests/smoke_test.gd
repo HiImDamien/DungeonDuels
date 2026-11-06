@@ -296,6 +296,19 @@ func _test_join_screen(join: JoinScreen) -> Node:
 	join = get_tree().current_scene
 	check(join is JoinScreen and join.tokens.is_empty(), "Play again opens the join screen with empty slots")
 
+	# Headless isn't web, so turn the hint on by hand and skip the wait.
+	check(not join.controller_hint_enabled, "the no-controller hint is off outside web builds")
+	check(join.saw_controller, "the controller that pressed Play already counts as seen")
+	join.controller_hint_enabled = true
+	join.saw_controller = false  # as if Play had been chosen with the keyboard
+	join._elapsed = JoinScreen.CONTROLLER_HINT_DELAY
+	await wait(0.1)  # process_frame resumes before nodes run _process, so wait a beat
+	var hint_shown: bool = join._hint_label.text == JoinScreen.CONTROLLER_HINT
+	await move_stick(3, 0.1)  # any controller input, without joining
+	await wait(0.1)
+	check(hint_shown and join._hint_label.text == "",
+		"with no controller seen the hint appears, and controller input clears it")
+
 	await join_side(PlayerDevices.KEYBOARD, L)
 	await join_side("joypad:1", R)
 	await get_tree().process_frame

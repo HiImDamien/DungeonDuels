@@ -17,6 +17,9 @@ const MAX_PLAYERS := 2
 const STICK_THRESHOLD := 0.5
 const STICK_RESET := 0.3
 const MESSAGE_TIME := 3.0
+## Seconds without any controller input before suggesting a fix.
+const CONTROLLER_HINT_DELAY := 8.0
+const CONTROLLER_HINT := "No controller? Press again, or restart the browser"
 
 const P1_COLOR := Color(0.38, 0.57, 1.0)   # matches the HUD's P1
 const P2_COLOR := Color(1.0, 0.29, 0.23)   # matches the HUD's P2
@@ -27,6 +30,12 @@ const GRAY := Color(0.7, 0.7, 0.75)
 var tokens: Array[Dictionary] = []
 ## Seconds left before the match starts, or -1 while not counting down.
 var countdown_left := -1.0
+## Whether to suggest pressing again / restarting the browser when no
+## controller shows up. Web only: browsers can lose track of a controller
+## (seen with Chrome on macOS) until they're restarted. Tests can turn it on.
+var controller_hint_enabled := OS.has_feature("web")
+## True once any controller input or connection has been seen.
+var saw_controller := false
 
 var _started := false
 var _stick_held := {}
@@ -35,6 +44,8 @@ var _middle_label: Label
 var _countdown_label: Label
 var _message_label: Label
 var _message_id := 0
+var _hint_label: Label
+var _elapsed := 0.0
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -51,12 +62,17 @@ func _ready() -> void:
 	_label("A / Enter: ready      B / Backspace: back", ControlsScreen.FONT, 8, GRAY, Vector2(0, 162), Vector2(365, 10))
 	_message_label = _label("", ControlsScreen.FONT, 8, GOLD, Vector2(0, 180), Vector2(365, 10))
 	_countdown_label = _label("", ControlsScreen.FONT_BOLD, 16, GOLD, Vector2(0, 124), Vector2(365, 20))
+	_hint_label = _label("", ControlsScreen.FONT, 8, GRAY, Vector2(0, 190), Vector2(365, 10))
 
 	# Fires when the OS (or browser) starts or stops reporting a controller.
 	Input.joy_connection_changed.connect(_on_joy_connection_changed)
 	_refresh()
 
 func _process(delta: float) -> void:
+	_elapsed += delta
+	var show_hint := controller_hint_enabled and not saw_controller and _elapsed >= CONTROLLER_HINT_DELAY
+	_hint_label.text = CONTROLLER_HINT if show_hint else ""
+
 	if not all_ready():
 		countdown_left = -1.0
 		_countdown_label.text = ""
@@ -92,6 +108,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	var device := PlayerDevices.device_of(event)
 	if device == "":
 		return
+	if device != PlayerDevices.KEYBOARD:
+		saw_controller = true
 	if event is InputEventJoypadMotion:
 		_handle_stick(event, device)
 		return
@@ -176,6 +194,7 @@ func _on_joy_connection_changed(id: int, connected: bool) -> void:
 	var device := "joypad:%d" % id
 	var shown := PlayerDevices.device_name(device)
 	if connected:
+		saw_controller = true
 		if token_for(device).is_empty():
 			show_message("%s connected - press a button to join" % shown)
 		return
