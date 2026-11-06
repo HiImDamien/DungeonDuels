@@ -207,6 +207,7 @@ func _test_title_and_controls() -> Node:
 		widest = maxf(widest, font.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x)
 	check("Aim + Shoot: Arrow Keys" in lines[0] and widest <= title.get_viewport_rect().size.x,
 		"keyboard controls read 'Aim + Shoot: Arrow Keys' and fit on screen (%dpx)" % widest)
+	check(ControlsScreen.keyboard_heading() == "KEYBOARD", "before anyone joins, the keyboard has no owner")
 	await press(JOY_BUTTON_B, 0)
 	await get_tree().process_frame
 	check(title.get_children().filter(func(c): return c is ControlsScreen).is_empty() and title.menu.active,
@@ -215,8 +216,119 @@ func _test_title_and_controls() -> Node:
 	await press(JOY_BUTTON_DPAD_UP, 0)
 	await press(JOY_BUTTON_A, 0)
 	await wait(0.3)
+	var join := get_tree().current_scene
+	check(join is JoinScreen, "pressing Play opens the join screen")
+	if not join is JoinScreen:
+		return join
+	return await _test_join_screen(join)
+
+## Presses `key` if `device` is the keyboard, else `button` on that controller.
+func tap(device: String, key: Key, button: JoyButton) -> void:
+	if device == PlayerDevices.KEYBOARD:
+		await press_key(key)
+	else:
+		await press(button, PlayerDevices.joypad_id(device))
+
+## Joins with `device`, moves it to `side` and readies up.
+func join_side(device: String, side: int) -> void:
+	await tap(device, KEY_ENTER, JOY_BUTTON_A)
+	if side == JoinScreen.LEFT:
+		await tap(device, KEY_A, JOY_BUTTON_DPAD_LEFT)
+	else:
+		await tap(device, KEY_D, JOY_BUTTON_DPAD_RIGHT)
+	await tap(device, KEY_ENTER, JOY_BUTTON_A)
+
+func move_stick(device: int, value: float) -> void:
+	for v in [value, 0.0]:
+		var event := InputEventJoypadMotion.new()
+		event.device = device
+		event.axis = JOY_AXIS_LEFT_X
+		event.axis_value = v
+		Input.parse_input_event(event)
+		await get_tree().process_frame
+
+## Drives the join screen through its rules, then starts a match with the
+## keyboard as P1 (left) and controller 2 as P2 (right). Returns the game.
+func _test_join_screen(join: JoinScreen) -> Node:
+	print("Join screen")
+	const L := JoinScreen.LEFT
+	const M := JoinScreen.MIDDLE
+	const R := JoinScreen.RIGHT
+	check(join.tokens.is_empty(), "the join screen starts with nobody joined")
+	await move_stick(2, 1.0)
+	check(join.tokens.is_empty(), "moving a stick doesn't join")
+	await press_key(KEY_J)
+	await press_key(KEY_K)
+	check(join.tokens.size() == 1 and join.token_for("keyboard").get("side") == M,
+		"a key joins the keyboard in the middle, and the keyboard can't join twice")
+	await press(JOY_BUTTON_A, 1)
+	await press(JOY_BUTTON_X, 0)
+	check(join.tokens.size() == 2 and join.token_for("joypad:0").is_empty(), "a third device can't join")
+
+	await press(JOY_BUTTON_DPAD_LEFT, 1)
+	await press_key(KEY_A)
+	check(join.device_on(L) == "joypad:1" and join.token_for("keyboard").get("side") == M,
+		"a controller can take the left side, and a taken side is blocked")
+	await press_key(KEY_D)
+	await press_key(KEY_ENTER)
+	check(join.countdown_left < 0.0, "no countdown until both players are ready")
+	await press(JOY_BUTTON_A, 1)
+	await get_tree().process_frame
+	check(join.all_ready() and join.countdown_left > 0.0, "both players ready starts the countdown")
+	await press_key(KEY_LEFT)
+	check(join.token_for("keyboard").get("side") == R, "a ready player can't change sides")
+	await press_key(KEY_BACKSPACE)
+	await get_tree().process_frame
+	check(not join.token_for("keyboard").get("ready") and join.countdown_left < 0.0, "un-readying cancels the countdown")
+	await press_key(KEY_BACKSPACE)
+	check(join.token_for("keyboard").get("side") == M, "back again steps off the side to the middle")
+	await press_key(KEY_BACKSPACE)
+	check(join.token_for("keyboard").is_empty(), "back from the middle leaves")
+	for i in 3:
+		await press(JOY_BUTTON_B, 1)
+	check(join.tokens.is_empty(), "the controller can back all the way out too")
+
+	await press_key(KEY_ESCAPE)
+	await wait(0.3)
+	check(get_tree().current_scene.name == "TitleScreen", "back with nobody joined returns to the title")
+	await press(JOY_BUTTON_A, 0)
+	await wait(0.3)
+	join = get_tree().current_scene
+	check(join is JoinScreen and join.tokens.is_empty(), "Play again opens the join screen with empty slots")
+
+	# Headless isn't web, so turn the hint on by hand and skip the wait.
+	check(not join.controller_hint_enabled, "the no-controller hint is off outside web builds")
+	check(join.saw_controller, "the controller that pressed Play already counts as seen")
+	join.controller_hint_enabled = true
+	join.saw_controller = false  # as if Play had been chosen with the keyboard
+	join._elapsed = JoinScreen.CONTROLLER_HINT_DELAY
+	await wait(0.1)  # process_frame resumes before nodes run _process, so wait a beat
+	var hint_shown: bool = join._hint_label.text == JoinScreen.CONTROLLER_HINT
+	await move_stick(3, 0.1)  # any controller input, without joining
+	await wait(0.1)
+	check(hint_shown and join._hint_label.text == "",
+		"with no controller seen the hint appears, and controller input clears it")
+
+	await join_side(PlayerDevices.KEYBOARD, L)
+	await join_side("joypad:1", R)
+	await get_tree().process_frame
+	check(join.countdown_left > 0.0, "keyboard on the left and controller 2 on the right, both ready")
+	await wait(JoinScreen.COUNTDOWN + 0.3)
 	var game := get_tree().current_scene
-	check(game != null and game.name == "Game", "pressing Play starts the game")
+	check(game != null and game.name == "Game", "the countdown starts the match")
+
+	var shoot: Array = InputMap.action_get_events("shoot")
+	var p2_shoot: Array = InputMap.action_get_events("p2_shoot")
+	check(shoot.size() > 0 and shoot.all(func(e): return e is InputEventKey)
+		and p2_shoot.size() > 0 and p2_shoot.all(func(e): return not e is InputEventKey and e.device == 1),
+		"P1's actions are rebound to the keyboard only, P2's to controller 2 only")
+	var key := InputEventKey.new()
+	var joy0 := InputEventJoypadButton.new()
+	var joy1 := InputEventJoypadButton.new()
+	joy1.device = 1
+	check(PlayerDevices.player_for_event(key) == 1 and PlayerDevices.player_for_event(joy1) == 2
+		and PlayerDevices.player_for_event(joy0) == 0,
+		"keyboard is P1, controller 2 is P2, controller 1 belongs to nobody")
 	return game
 
 func _test_pause(game: Node) -> void:
@@ -232,15 +344,16 @@ func _test_pause(game: Node) -> void:
 	var enemies_frozen := get_tree().get_nodes_in_group("enemy").map(func(e): return e.global_position) == enemy_positions
 	check(GameState.time_remaining == time_left and enemies_frozen, "everything is frozen while paused")
 
-	await press(JOY_BUTTON_START, 0)
-	await press(JOY_BUTTON_B, 0)
-	check(get_tree().paused and pause_menu._root.visible, "P1 can't resume or use P2's pause menu")
+	await press_key(KEY_ESCAPE)
+	await press_key(KEY_BACKSPACE)
+	check(get_tree().paused and pause_menu._root.visible, "P1 (keyboard) can't resume or use P2's pause menu")
 	check(pause_menu._messages[1].visible and pause_menu._messages[1].text == "Only P2 can resume"
 		and not pause_menu._messages[2].visible, "P1 is told on their own side that only P2 can resume")
 
 	await press(JOY_BUTTON_DPAD_DOWN, 1)
 	await press(JOY_BUTTON_A, 1)
 	check(pause_menu._controls != null, "P2 can open Controls from the pause menu")
+	check(ControlsScreen.keyboard_heading() == "KEYBOARD (P1)", "Controls shows the keyboard belongs to P1")
 	await press(JOY_BUTTON_START, 1)
 	check(get_tree().paused and pause_menu._controls != null, "Start doesn't resume while Controls is open")
 	await press(JOY_BUTTON_B, 1)
@@ -251,6 +364,9 @@ func _test_pause(game: Node) -> void:
 	check(get_tree().paused and not pause_menu._root.visible, "resuming counts down before unpausing")
 	await wait(2.2)
 	check(not get_tree().paused, "game unpauses after the countdown")
+
+	await press(JOY_BUTTON_START, 0)
+	check(not get_tree().paused, "controller 1 didn't join, so its Start can't pause")
 
 	GameState.pauses_left[1] = 0
 	await press_key(KEY_ESCAPE)
@@ -384,7 +500,7 @@ func _run() -> void:
 		f2.invincible = false
 		f2.player_hit(f1)
 	await wait(0.3)
-	await press(JOY_BUTTON_START, 0)
+	await press(JOY_BUTTON_START, 1)  # P2 has joined; Start isn't a win-screen exit
 	check(not get_tree().paused, "pausing is disabled once someone has won")
 	var win_labels: Array = get_tree().current_scene.get_children().filter(
 		func(c): return c is Label and c.text.ends_with("Wins!"))
@@ -402,10 +518,21 @@ func _run() -> void:
 	check(get_tree().current_scene.name == "TitleScreen", "Enter on the win screen returns to the title")
 	await press(JOY_BUTTON_A, 0)
 	await wait(0.3)
-	check(get_tree().current_scene.name == "Game", "Play starts a rematch")
+	var join: Node = get_tree().current_scene
+	check(join is JoinScreen and join.tokens.is_empty(), "Play opens a fresh join screen for the rematch")
+	# Two controllers this time, so controller 1 is P1.
+	await join_side("joypad:0", JoinScreen.LEFT)
+	await join_side("joypad:1", JoinScreen.RIGHT)
+	await wait(JoinScreen.COUNTDOWN + 0.3)
+	check(get_tree().current_scene.name == "Game", "two controllers can start a rematch")
 	check(GameState.player_stats[1].kills == 0 and GameState.pauses_left[1] == GameState.PAUSES_PER_PLAYER,
 		"the rematch resets stats and pauses")
+	check(ControlsScreen.keyboard_heading() == "KEYBOARD (NOT IN USE)"
+		and InputLabels.keyboard_label(["shoot"]) == "Arrow Keys",
+		"with two controllers the keyboard is unused, but its labels still show")
 	await wait(3.5)  # grace period
+	await press_key(KEY_ESCAPE)
+	check(not get_tree().paused, "the keyboard can't pause when nobody picked it")
 	await press(JOY_BUTTON_START, 0)
 	await press(JOY_BUTTON_DPAD_DOWN, 0)
 	await press(JOY_BUTTON_DPAD_DOWN, 0)
