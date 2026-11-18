@@ -15,6 +15,8 @@ Holds everything that has to survive a scene change:
 - each player's `PlayerStats`, keyed by player index 1/2
 - pauses left
 - the opponent ticker signal
+- the balance log counters (picks, rooms cleared, deaths), written once per finished match by
+  `log_match_result()`. See [balance.md](balance.md).
 
 `start_match()` resets all of it, so rematches start clean. When the timer expires, `game.gd`
 captures stats from the live players, and `final_battle.gd` spawns fresh `Player` instances and
