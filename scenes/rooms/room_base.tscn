@@ -57,24 +57,24 @@ position = Vector2(80, 105)
 
 [node name="Upgrade1_label" type="Label" parent="CanvasLayer" unique_id=131842643]
 texture_filter = 1
-offset_left = 28.0
+offset_left = 21.0
 offset_top = 60.0
-offset_right = 70.0
+offset_right = 77.0
 offset_bottom = 83.0
 theme_override_colors/font_color = Color(0, 0, 0, 1)
 theme_override_fonts/font = ExtResource("3_s7o37")
-theme_override_font_sizes/font_size = 10
+theme_override_font_sizes/font_size = 8
 horizontal_alignment = 1
 
 [node name="Upgrade2_label" type="Label" parent="CanvasLayer" unique_id=436072850]
 texture_filter = 1
-offset_left = 88.0
+offset_left = 81.0
 offset_top = 60.0
-offset_right = 130.0
+offset_right = 137.0
 offset_bottom = 83.0
 theme_override_colors/font_color = Color(0, 0, 0, 1)
 theme_override_fonts/font = ExtResource("3_s7o37")
-theme_override_font_sizes/font_size = 10
+theme_override_font_sizes/font_size = 8
 horizontal_alignment = 1
 
 [node name="Upgrade3_label" type="Label" parent="CanvasLayer" unique_id=1873401265]
