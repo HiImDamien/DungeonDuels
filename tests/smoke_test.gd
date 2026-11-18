@@ -415,6 +415,7 @@ func _test_pause(game: Node) -> void:
 # ── The test ──────────────────────────────────────────────────────────────────
 
 func _run() -> void:
+	_balance_log_setup()
 	var game := await _test_title_and_controls()
 	if game == null or game.name != "Game":
 		_finish()
@@ -518,6 +519,8 @@ func _run() -> void:
 		await walk_onto(p1, bu)
 		check(p1.current_weapon.has_bullet_mode(mode), "bullet mode '%s' added to the bow" % mode)
 
+	await _balance_log_p2_pick(p2)
+
 	print("Final battle")
 	var kills := p1.kills
 	var modes: Array[String] = p1.current_weapon.bullet_modes.duplicate()
@@ -549,6 +552,7 @@ func _run() -> void:
 	var win_labels: Array = get_tree().current_scene.get_children().filter(
 		func(c): return c is Label and c.text.ends_with("Wins!"))
 	check(win_labels.size() == 1 and win_labels[0].text == "P1 Wins!", "eliminating P2 shows 'P1 Wins!'")
+	_check_balance_log_written(kills)
 
 	var battle := get_tree().current_scene
 	_check_win_screen(battle)
@@ -571,6 +575,7 @@ func _run() -> void:
 	check(get_tree().current_scene.name == "Game", "two controllers can start a rematch")
 	check(GameState.player_stats[1].kills == 0 and GameState.pauses_left[1] == GameState.PAUSES_PER_PLAYER,
 		"the rematch resets stats and pauses")
+	_check_balance_log_reset()
 	check(ControlsScreen.keyboard_heading() == "KEYBOARD (NOT IN USE)"
 		and InputLabels.keyboard_label(["shoot"]) == "Arrow Keys",
 		"with two controllers the keyboard is unused, but its labels still show")
@@ -584,6 +589,7 @@ func _run() -> void:
 	await wait(0.3)
 	check(get_tree().current_scene.name == "TitleScreen" and not get_tree().paused,
 		"Quit to Menu returns to the title, unpaused")
+	_check_balance_log_after_quit()
 
 	await _test_solo_match()
 	_finish()
@@ -626,3 +632,68 @@ func _test_solo_match() -> void:
 	check(p2.global_position.x > cpu_start.x + 1.0
 		and PlayerDevices.ACTIONS.all(func(a): return InputMap.action_get_events("p2_" + a).is_empty()),
 		"a player driven by CpuInput moves right without touching the InputMap")
+
+# ── Balance log (#30) ─────────────────────────────────────────────────────────
+# Kept in one block so it merges cleanly with other sections' additions.
+
+const BALANCE_LOG_PATH := "user://balance_log_smoke.jsonl"
+var _p2_pick := ""
+
+## Sends records to a throwaway file so test runs never touch the real log.
+func _balance_log_setup() -> void:
+	BalanceLog.path = BALANCE_LOG_PATH
+	DirAccess.remove_absolute(BALANCE_LOG_PATH)
+
+func _balance_log_lines() -> PackedStringArray:
+	if not FileAccess.file_exists(BALANCE_LOG_PATH):
+		return PackedStringArray()
+	return FileAccess.get_file_as_string(BALANCE_LOG_PATH).strip_edges().split("\n", false)
+
+## P2 clears a room and takes an upgrade, so both players have picks to log.
+func _balance_log_p2_pick(p2: player) -> void:
+	print("Balance log: P2 picks an upgrade")
+	var rm2 = room_manager_for(p2)
+	await clear_room(p2)
+	if rm2._offered_upgrades.is_empty():
+		_fail("P2's cleared room should offer upgrades")
+		return
+	var pickup: Upgrade = rm2._offered_upgrades[0]
+	_p2_pick = pickup.pick_id()
+	await walk_onto(p2, pickup)
+	check(GameState.picks[2] == [_p2_pick] and GameState.rooms_cleared[2] == 1,
+		"GameState records P2's pick '%s' and room clear" % _p2_pick)
+
+func _check_balance_log_written(p1_dungeon_kills: int) -> void:
+	var lines := _balance_log_lines()
+	check(lines.size() == 1, "finishing the match appends exactly one balance log line (got %d)" % lines.size())
+	if lines.size() != 1:
+		return
+	var record = JSON.parse_string(lines[0])
+	if not record is Dictionary:
+		_fail("the balance log line is a JSON object")
+		return
+	var r1: Dictionary = record.get("p1", {})
+	var r2: Dictionary = record.get("p2", {})
+	var p1_picks: Array = r1.get("picks", [])
+	check(record.get("winner") == 1.0 and record.get("duration_s", 0.0) > 0.0
+		and record.has("time") and record.has("version"),
+		"the record has winner 1, a duration, a time and a version")
+	check(p1_picks.size() == 3 and p1_picks[2] in BulletUpgrade.MODES
+		and p1_picks.slice(0, 2).all(func(id): return id in ["attack_rate", "speed_boost", "health_max", "shield_regen", "shield_max"]),
+		"P1's picks are two stat upgrades then a bullet mode %s" % str(p1_picks))
+	check(r2.get("picks", []) == [_p2_pick], "P2's picks are logged %s" % str(r2.get("picks")))
+	check(r1.get("device") == "keyboard" and r2.get("device") == "joypad",
+		"devices are logged as keyboard / joypad without ids")
+	check(r1.get("rooms_cleared") == 3.0 and r2.get("rooms_cleared") == 1.0
+		and r1.get("kills") == float(p1_dungeon_kills) and r1.has("deaths") and r2.has("deaths"),
+		"rooms cleared, kills and deaths are logged")
+
+func _check_balance_log_reset() -> void:
+	check(GameState.picks[1].is_empty() and GameState.picks[2].is_empty()
+		and GameState.rooms_cleared[1] == 0 and GameState.deaths[1] == 0,
+		"the rematch starts with empty pick lists")
+
+func _check_balance_log_after_quit() -> void:
+	check(_balance_log_lines().size() == 1, "quitting mid-match writes no balance log line")
+	DirAccess.remove_absolute(BALANCE_LOG_PATH)
+	BalanceLog.path = "user://balance_log.jsonl"
