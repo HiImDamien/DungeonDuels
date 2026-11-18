@@ -63,6 +63,8 @@ func is_assigned() -> bool:
 	return not devices.is_empty()
 
 ## Gives P1 and P2 their devices and rebinds their actions to match.
+## An empty device (solo play) leaves that player with no bindings at all, so
+## they stand idle and no device can control them.
 func assign(p1_device: String, p2_device: String) -> void:
 	devices = {1: p1_device, 2: p2_device}
 	for index in PREFIXES:
@@ -70,6 +72,8 @@ func assign(p1_device: String, p2_device: String) -> void:
 		for action: String in ACTIONS:
 			var player_action: String = PREFIXES[index] + action
 			InputMap.action_erase_events(player_action)
+			if device == "":
+				continue
 			for template: InputEvent in template_events(action, device == KEYBOARD):
 				var event: InputEvent = template.duplicate()
 				# -1 = any device. Fine for keys: only one keyboard can join.
