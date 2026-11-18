@@ -470,6 +470,18 @@ func _run() -> void:
 	check(rm._offered_upgrades.size() == 2, "two stat upgrades offered")
 	var label: Label = rm.current_room_node.get_node("CanvasLayer/Upgrade1_label")
 	check(label.text != "", "upgrade label shows '%s'" % label.text.replace("\n", " "))
+	var label2: Label = rm.current_room_node.get_node("CanvasLayer/Upgrade2_label")
+	var label_font := label.get_theme_font("font")
+	var label_size := label.get_theme_font_size("font_size")
+	var widest := 0.0
+	for scene: PackedScene in rm.UPGRADE_SCENES:
+		var u: Upgrade = scene.instantiate()
+		for line in u.description.split("\n"):
+			widest = maxf(widest, label_font.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, label_size).x)
+		u.free()
+	check(widest <= label.size.x and widest <= label2.size.x
+		and label.position.x + label.size.x <= label2.position.x,
+		"every stat upgrade description fits its label and the two labels don't overlap (widest %d px)" % widest)
 
 	var regen: Upgrade = load("res://scenes/upgrades/shield_regen.tscn").instantiate()
 	var cooldown := p1.shield.cooldown_time
