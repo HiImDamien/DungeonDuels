@@ -16,23 +16,25 @@ const POLYGON_DISTANCE := 14.0
 # Captured from the scene in _ready() so we never hardcode the offset.
 var _base_position := Vector2.ZERO
 
-@export var max_health := 10:
+# Few, heavy points (#29): every hit visibly shrinks the shield, it can really
+# break, and recharge is slow enough that Shield Regen is worth taking.
+@export var max_health := 4:
 	set(value):
 		max_health = value
 		health = value
 
 # Setting these also updates the matching timer, so upgrades apply immediately.
-@export var cooldown_time := 2.2:
+@export var cooldown_time := 4.0:
 	set(value):
 		cooldown_time = value
 		if is_node_ready():
 			cooldown_timer.wait_time = value
-@export var recharge_interval := 0.3:
+@export var recharge_interval := 1.0:
 	set(value):
 		recharge_interval = value
 		if is_node_ready():
 			recharge_timer.wait_time = value
-@export var recharge_delay := 0.5:
+@export var recharge_delay := 1.0:
 	set(value):
 		recharge_delay = value
 		if is_node_ready():
@@ -40,7 +42,7 @@ var _base_position := Vector2.ZERO
 
 signal shield_changed(health: int)
 
-var health := 10:
+var health := 4:
 	set(value):
 		health = value
 		shield_changed.emit(health)

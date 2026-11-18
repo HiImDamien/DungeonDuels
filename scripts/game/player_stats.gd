@@ -11,10 +11,10 @@ var kills: int = 0
 var speed: float = 75.0
 var fire_rate: float = 0.3
 var bullet_modes: Array[String] = []
-var shield_max_health: int = 10
-var shield_cooldown_time: float = 2.2
-var shield_recharge_interval: float = 0.3
-var shield_recharge_delay: float = 0.5
+var shield_max_health: int = 4
+var shield_cooldown_time: float = 4.0
+var shield_recharge_interval: float = 1.0
+var shield_recharge_delay: float = 1.0
 
 func capture(p: player) -> void:
 	max_health = p.max_health

@@ -114,6 +114,48 @@ func _test_keyboard_shooting(p: player) -> void:
 	await hold_keys([KEY_E], 0.1)
 	check(weapon.last_fire_time == fired_at, "E no longer shoots")
 
+## Few, heavy shield points and a Shield Regen you can feel (#29). Runs in a
+## cleared room so no stray enemy bullets interfere.
+func _test_shield(p: player) -> void:
+	var shield := p.shield
+	check(shield.max_health == 4, "the shield starts with 4 heavy points")
+
+	# Hold the shield through PlayerInput, the way the CPU opponent will.
+	var cpu := CpuInput.new()
+	cpu.shield = true
+	cpu.aim = Vector2.RIGHT
+	p.input = cpu
+	shield.reset()
+	p.invincible = false
+	await wait(0.1)
+	var hp := p.health
+	var bullet = Enemy.ENEMY_BULLET.instantiate()
+	p.get_parent().add_child(bullet)
+	bullet.global_position = p.global_position + Vector2(24, 0)
+	bullet.direction = Vector2.LEFT
+	await wait(0.3)
+	check(p.health == hp and shield.health == shield.max_health - 1,
+		"a raised shield takes an enemy bullet for the player and loses one point (hp %d, shield %d)"
+		% [p.health, shield.health])
+	p.input = DeviceInput.new(p._input_prefix)
+	await wait(0.1)
+	check(not shield.is_active, "letting go of the shield lowers it")
+
+	var regen: Upgrade = load("res://scenes/upgrades/shield_regen.tscn").instantiate()
+	var cooldown := shield.cooldown_time
+	var interval := shield.recharge_interval
+	regen.apply(p)
+	regen.apply(p)
+	regen.free()
+	check(is_equal_approx(shield.cooldown_time, cooldown / 4.0)
+		and is_equal_approx(shield.cooldown_timer.wait_time, shield.cooldown_time),
+		"two Shield Regens quarter the break cooldown (%.1fs → %.1fs), timers updated immediately"
+		% [cooldown, shield.cooldown_time])
+	check(shield.recharge_interval <= interval * 0.4
+		and is_equal_approx(shield.recharge_timer.wait_time, shield.recharge_interval),
+		"two Shield Regens make recharge much faster (%.2fs → %.2fs per point)"
+		% [interval, shield.recharge_interval])
+
 ## Moves the player onto a pickup so real physics triggers the pickup.
 func walk_onto(p: player, pickup: Area2D) -> void:
 	p.global_position = pickup.global_position
@@ -485,13 +527,7 @@ func _run() -> void:
 		and label.position.x + label.size.x <= label2.position.x,
 		"every stat upgrade description fits its label and the two labels don't overlap (widest %d px)" % widest)
 
-	var regen: Upgrade = load("res://scenes/upgrades/shield_regen.tscn").instantiate()
-	var cooldown := p1.shield.cooldown_time
-	regen.apply(p1)
-	check(p1.shield.cooldown_time < cooldown
-		and is_equal_approx(p1.shield.cooldown_timer.wait_time, p1.shield.cooldown_time),
-		"shield regen upgrade updates the shield's timers immediately")
-	regen.free()
+	await _test_shield(p1)
 
 	await walk_onto(p1, rm._offered_upgrades[0])
 	check(rm._offered_upgrades.is_empty(), "walking onto an upgrade picks it up and removes the other")
@@ -527,6 +563,7 @@ func _run() -> void:
 	var modes: Array[String] = p1.current_weapon.bullet_modes.duplicate()
 	var speed := p1.speed
 	var shield_max := p1.shield.max_health
+	var shield_interval := p1.shield.recharge_interval
 	GameState.time_remaining = 0.05
 	await wait(0.5)
 	check(GameState.phase == GameState.Phase.FINAL_BATTLE, "timer running out starts the final battle")
@@ -539,6 +576,7 @@ func _run() -> void:
 	check(f1.kills == kills and f1.speed == speed, "kills and speed carry over")
 	check(f1.current_weapon.bullet_modes == modes, "bullet modes carry over %s" % str(modes))
 	check(f1.shield.max_health == shield_max
+		and is_equal_approx(f1.shield.recharge_interval, shield_interval)
 		and is_equal_approx(f1.shield.cooldown_timer.wait_time, f1.shield.cooldown_time),
 		"shield upgrades carry over")
 	check(f2.current_weapon.bullet_color != Color.WHITE, "P2's bullets are tinted")
