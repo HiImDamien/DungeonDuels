@@ -79,6 +79,7 @@ Pushes to `main` then deploy to itch.io.
 | [docs/input.md](docs/input.md) | Player input, `PlayerDevices`, join screen, solo play |
 | [docs/cpu-opponent.md](docs/cpu-opponent.md) | CPU opponent design |
 | [docs/ui.md](docs/ui.md) | Menus, overlays and pausing |
+| [docs/balance.md](docs/balance.md) | Balance log of upgrade picks and match results |
 | [docs/testing.md](docs/testing.md) | How the smoke test works |
 | [docs/deployment.md](docs/deployment.md) | CI, itch.io deploy and local Web export |
 | [docs/roadmap.md](docs/roadmap.md) | What's planned next |
