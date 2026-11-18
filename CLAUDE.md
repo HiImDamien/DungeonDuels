@@ -19,6 +19,10 @@ GODOT=/path/to/Godot tests/run_smoke_test.sh  # if `godot` isn't on PATH
 - There is no linter or build step.
 - Godot generates a `.uid` file next to each script on import, and these are tracked in git. Commit the `.uid` that the runner's import step creates along with any new script.
 
+## Deployment
+
+`.github/workflows/deploy-itch.yml` runs the smoke test and a headless Web export (Godot 4.7.2, Web templates only) on every pull request and push to `main`. On `main` (or a manual run from the Actions tab) it then pushes `build/web` to itch.io with butler, to the `hiimdamien/dungeon-duels:html5` channel, using the `BUTLER_API_KEY` repository secret. A failing smoke test blocks the deploy. To export locally the same way: `godot --headless --export-release "Web" build/web/index.html` (`build/` is gitignored).
+
 ## Editing project.godot
 
 The Input Map, autoloads and layer names live in `project.godot`. If the Godot editor is open, it can overwrite changes made to this file from outside the editor, so check with the user before editing it. Input actions are serialized as `Object(InputEventKey, ...)` blobs where `"device"` matters: `-1` means any device.

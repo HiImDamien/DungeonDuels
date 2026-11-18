@@ -1,0 +1,89 @@
+# Tests, exports and deploys the Web build to itch.io.
+#
+#   pull_request  -> smoke test + export only (nothing is published)
+#   push to main  -> smoke test + export, then butler push to itch.io
+#   manual run    -> same as push to main (Actions tab > Deploy to itch.io > Run workflow)
+#
+# Needs one repository secret: BUTLER_API_KEY (itch.io > Settings > API keys).
+name: Deploy to itch.io
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  GODOT_VERSION: 4.7.2
+  ITCH_TARGET: hiimdamien/dungeon-duels:html5
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache Godot and Web export templates
+        id: godot-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/godot
+            ~/.local/share/godot/export_templates/${{ env.GODOT_VERSION }}.stable
+          key: godot-${{ env.GODOT_VERSION }}-web
+
+      - name: Download Godot and Web export templates
+        if: steps.godot-cache.outputs.cache-hit != 'true'
+        run: |
+          base="https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable"
+          mkdir -p ~/godot
+          curl -fsSL -o /tmp/godot.zip "$base/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
+          unzip -q /tmp/godot.zip -d ~/godot
+          mv ~/godot/Godot_v${GODOT_VERSION}-stable_linux.x86_64 ~/godot/godot
+          # The full template bundle is ~1.2 GB; only the Web templates are kept.
+          tdir=~/.local/share/godot/export_templates/${GODOT_VERSION}.stable
+          mkdir -p "$tdir"
+          curl -fsSL -o /tmp/templates.tpz "$base/Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
+          unzip -qj /tmp/templates.tpz 'templates/web_*' 'templates/version.txt' -d "$tdir"
+          rm /tmp/templates.tpz /tmp/godot.zip
+
+      - name: Smoke test
+        run: GODOT=~/godot/godot tests/run_smoke_test.sh
+
+      - name: Export Web build
+        run: |
+          mkdir -p build/web
+          ~/godot/godot --headless --export-release "Web" build/web/index.html
+          test -s build/web/index.pck && test -s build/web/index.wasm
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web-build
+          path: build/web
+          retention-days: 7
+
+  deploy:
+    needs: build
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    concurrency: itch-deploy
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: web-build
+          path: build/web
+
+      - name: Install butler
+        run: |
+          curl -fsSL -o butler.zip https://broth.itch.zone/butler/linux-amd64/LATEST/archive/default \
+            || curl -fsSL -o butler.zip https://broth.itch.ovh/butler/linux-amd64/LATEST/archive/default
+          unzip -q butler.zip -d butler && chmod +x butler/butler
+          butler/butler -V
+
+      - name: Push to itch.io
+        env:
+          BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
+        run: |
+          butler/butler push build/web "$ITCH_TARGET" \
+            --userversion "$(date -u +%Y.%m.%d)-${GITHUB_SHA::7}"
