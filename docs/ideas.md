@@ -1,7 +1,8 @@
 # Ideas backlog (brainstorm, Nov 18 2026)
 
-Raw ideas from a brainstorm, grouped and lightly sized. This file is input for a planning pass,
-which turns it into a roadmap and GitHub issues. These are not commitments.
+Raw ideas from a brainstorm, grouped and lightly sized. **Processed on Nov 18 2026 into
+[roadmap.md](roadmap.md)** (issues #29–#50). The open questions at the bottom are answered there.
+This file is kept as the original brainstorm record.
 
 Sizes: **S** = an evening, **M** = a few sessions, **L** = multi-week / needs design first.
 
