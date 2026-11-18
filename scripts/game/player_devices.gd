@@ -14,6 +14,9 @@ extends Node
 ## keyboard and controller 1 are P1, controller 2 is P2.
 
 const KEYBOARD := "keyboard"
+## The computer plays this side. No device is bound, so nothing can steer it
+## (or pause for it); CpuBrain.attach_if_cpu() gives it a brain instead.
+const CPU := "cpu"
 ## The per-player actions that get rebound. "pause" stays shared (any device);
 ## PauseMenu works out who pressed it with player_for_event().
 const ACTIONS := [
@@ -25,6 +28,9 @@ const PREFIXES := {1: "", 2: "p2_"}
 
 ## Player index → device, empty until assign() is called.
 var devices := {}
+## "easy" | "medium" | "hard". Lives here so it survives the scene change.
+## Only "medium" exists until #34.
+var cpu_difficulty := "medium"
 
 # Action → the keyboard / joypad events P1 had in project.godot.
 var _key_templates := {}
@@ -57,14 +63,16 @@ static func joypad_id(device: String) -> int:
 static func device_name(device: String) -> String:
 	if device == KEYBOARD:
 		return "KEYBOARD"
+	if device == CPU:
+		return "CPU"
 	return "CONTROLLER %d" % (joypad_id(device) + 1)
 
 func is_assigned() -> bool:
 	return not devices.is_empty()
 
 ## Gives P1 and P2 their devices and rebinds their actions to match.
-## An empty device (solo play) leaves that player with no bindings at all, so
-## they stand idle and no device can control them.
+## An empty device or CPU leaves that player with no bindings at all, so no
+## device can control them. An empty one stands idle; a CPU gets a CpuBrain.
 func assign(p1_device: String, p2_device: String) -> void:
 	devices = {1: p1_device, 2: p2_device}
 	for index in PREFIXES:
@@ -72,7 +80,7 @@ func assign(p1_device: String, p2_device: String) -> void:
 		for action: String in ACTIONS:
 			var player_action: String = PREFIXES[index] + action
 			InputMap.action_erase_events(player_action)
-			if device == "":
+			if device == "" or device == CPU:
 				continue
 			for template: InputEvent in template_events(action, device == KEYBOARD):
 				var event: InputEvent = template.duplicate()

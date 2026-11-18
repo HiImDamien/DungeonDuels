@@ -1,6 +1,6 @@
 # CPU opponent design
 
-Status: design agreed Nov 18 2026 and not yet built. Implemented by #31 (PlayerInput), #32 (duel),
+Status: design agreed Nov 18 2026. #31 (PlayerInput) and #32 (duel, Medium only) are built;
 #33 (dungeon) and #34 (difficulty), then #48 (navigation, once rooms have walls).
 Decision: the CPU drives a normal `Player` through a **controller abstraction**. It does not
 fake input through the InputMap.
@@ -49,8 +49,7 @@ func is_shielding() -> bool
 ### Choosing the CPU
 
 - `PlayerDevices.CPU := "cpu"` is a third device kind next to `"keyboard"` / `"joypad:<id>"`.
-- Solo play currently passes `""` for the empty side. Once the CPU exists, the join screen
-  passes `"cpu"` instead. `"cpu"` behaves like `""` in `assign()` (actions erased, nothing bound),
+- In solo play the join screen passes `"cpu"` for the empty side. `"cpu"` behaves like `""` in `assign()` (actions erased, nothing bound),
   so no keyboard or controller can steer the CPU player.
 - `player_for_event()` never returns the CPU's index, because no event's `device_of()` is
   `"cpu"`. That means the CPU can't pause and humans can't unpause for it, without any extra code.
@@ -67,7 +66,13 @@ func is_shielding() -> bool
   is paused or the player is freed.
 - It **re-decides** every `profile.decision_interval` seconds and **steers** every frame toward
   the last decision. That keeps it cheap on web and gives it human-like hesitation.
-- It does nothing while `player.is_dead` is true.
+- It does nothing while `player.is_dead` or `player.stunned` is true, so it waits out the grace
+  countdown instead of getting a head start, and while it has no living opponent.
+- `reaction_time` means a bullet must have been on screen that long before the CPU notices it.
+  It then checks whether the bullet's path passes within `dodge_radius` in the next 0.6 s
+  (`THREAT_LOOKAHEAD`), and rolls `shield_skill` once per bullet to pick shield or sidestep.
+- Threats are checked every frame (a handful of bullets, so it's cheap). Only strafe direction
+  and aim error wait for the next decision.
 - It uses its own `RandomNumberGenerator`. `seed` is exported so the smoke test is deterministic.
 
 ### Perception: stay inside your own world

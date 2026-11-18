@@ -21,7 +21,7 @@ the log never has half records.
 | `version` | Project Settings > Application > Config > Version, or `dev` while it's blank |
 | `duration_s` | Seconds played, dungeon + final battle. Pauses don't count. |
 | `winner` | `1` or `2` |
-| `device` | `keyboard`, `joypad`, later `cpu` (#32). No ids. `none` = the idle side in solo play, `unassigned` = `game.tscn` run straight from the editor. |
+| `device` | `keyboard`, `joypad` or `cpu` (the solo opponent). No ids. `none` = an empty side, `unassigned` = `game.tscn` run straight from the editor. |
 | `picks` | Upgrades in the order they were taken. Stat upgrades by `class_name` (`attack_rate`, `speed_boost`, `health_max`, `shield_regen`, `shield_max`), bullet upgrades by mode (`spread`, `bounce`, `big`, `tracking`, `cardinal`, `burst`). |
 | `rooms_cleared`, `kills`, `deaths` | Dungeon only. A death there means a respawn. |
 

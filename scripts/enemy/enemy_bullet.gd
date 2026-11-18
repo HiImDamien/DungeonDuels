@@ -3,6 +3,9 @@ extends Area2D
 var speed: float = 200
 var direction: Vector2 = Vector2.RIGHT
 
+func _ready() -> void:
+	add_to_group("enemy_bullet")  # CpuBrain looks for incoming shots
+
 func _process(delta: float) -> void:
 	global_position += direction * speed * delta
 

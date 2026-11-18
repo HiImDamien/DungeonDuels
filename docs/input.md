@@ -31,6 +31,8 @@ The join screen is event-driven and never lists connected joypads at startup, be
 only report a gamepad after one of its buttons is pressed.
 
 **Solo play:** when exactly one device has joined, picked a side and readied up, pressing A /
-Enter again sets `JoinScreen.solo` and starts the countdown. `assign()` then gets `""` for the
-empty side, which erases that player's actions and adds none, so they spawn but stand idle.
+Enter again sets `JoinScreen.solo` and starts the countdown. `assign()` then gets
+`PlayerDevices.CPU` (`"cpu"`) for the empty side, which erases that player's actions and adds
+none, so no device can steer or pause for them. `CpuBrain.attach_if_cpu()` gives them a brain in
+the final battle; in the dungeon they still stand idle until #33. See `docs/cpu-opponent.md`.
 A second device joining, backing out, or the device disconnecting clears `solo`.

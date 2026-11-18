@@ -34,6 +34,7 @@ func _spawn_player(index: int, spawn: Vector2) -> player:
 	p.position = spawn
 	GameState.stats_for(p).apply_to(p)
 	p.eliminated.connect(_on_player_eliminated.bind(p))
+	CpuBrain.attach_if_cpu(p)  # solo play: the empty side fights back
 	return p
 
 func _on_player_eliminated(loser: player) -> void:
