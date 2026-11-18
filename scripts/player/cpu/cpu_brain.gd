@@ -9,7 +9,8 @@ class_name CpuBrain
 ## profile.decision_interval seconds and steers every frame toward the last
 ## decision, which keeps it cheap on web and gives it human-like hesitation.
 ##
-## Today it only fights the final battle (#32). The dungeon is #33.
+## In the final battle it duels the other player (#32). In the dungeon it
+## fights its own enemies, dodges their bullets and collects upgrades (#33).
 ## Design: docs/cpu-opponent.md.
 
 const PROFILES := {
@@ -31,6 +32,11 @@ const RANGE_SOFTNESS := 30.0
 const STRAFE_FLIP_CHANCE := 0.15
 ## After bouncing off a wall, don't flip again for this long (no jitter).
 const WALL_FLIP_COOLDOWN := 0.5
+## A bullet upgrade always beats a stat upgrade (they're the big pickups).
+const BULLET_UPGRADE_BONUS := 100.0
+## Random spread added to upgrade scores, so equal weights don't always pick
+## the same one.
+const UPGRADE_JITTER := 0.1
 
 @export var profile: CpuProfile
 ## 0 = random each match. Anything else makes its choices repeatable (the
@@ -51,6 +57,8 @@ var _aim_offset := 0.0
 var _shield_until := -1.0
 var _shield_dir := Vector2.RIGHT
 var _wall_flip_at := -INF
+## The upgrade it's walking to, kept until it's picked up or freed.
+var _chosen_upgrade: Upgrade = null
 ## Bullet instance id → {"since": first-seen time, "shield": rolled choice}.
 var _seen := {}
 
@@ -79,10 +87,9 @@ func _ready() -> void:
 
 func _physics_process(delta: float) -> void:
 	_clock += delta
-	var opponent := _find_opponent()
 	# Grace stun: a human may shuffle about during the countdown, but the CPU
 	# simply waits for "GO" so it never gets a head start.
-	if _player.is_dead or _player.stunned or opponent == null or opponent.is_dead:
+	if _player.is_dead or _player.stunned:
 		_idle()
 		return
 
@@ -91,9 +98,20 @@ func _physics_process(delta: float) -> void:
 		_decide()
 		_decision_left = profile.decision_interval
 
-	var to_opponent := opponent.global_position - _player.global_position
-	var move := _strafe(to_opponent)
-	var aim := _lead_aim(opponent).rotated(_aim_offset)
+	# An opponent in our world means the final battle; otherwise the dungeon.
+	var target: Node2D = _find_opponent()
+	if target != null and target.is_dead:
+		_idle()
+		return
+	if target == null:
+		target = _nearest_enemy()
+	if target == null:
+		_collect()
+		return
+
+	var to_target := target.global_position - _player.global_position
+	var move := _strafe(to_target)
+	var aim := _lead_aim(target).rotated(_aim_offset)
 
 	var threat := _most_urgent_threat()
 	if threat != null:
@@ -117,6 +135,20 @@ func _idle() -> void:
 	_input.shoot = false
 	_input.shield = false
 
+## Room cleared: walk straight to the best offered upgrade, or wait for the
+## next room. No wall sliding here: pickups sit close to the walls and the
+## rooms are open, so move_and_slide is enough.
+func _collect() -> void:
+	_idle()
+	if not is_instance_valid(_chosen_upgrade) or _chosen_upgrade.is_queued_for_deletion():
+		_chosen_upgrade = _best_upgrade()
+	if _chosen_upgrade == null:
+		return
+	var to_upgrade := _chosen_upgrade.global_position - _player.global_position
+	if to_upgrade.length() > 0.5:
+		_input.move = to_upgrade.normalized()
+		_input.aim = _input.move
+
 func _decide() -> void:
 	_aim_offset = deg_to_rad(_rng.randf_range(-profile.aim_error_deg, profile.aim_error_deg))
 	if _rng.randf() < STRAFE_FLIP_CHANCE:
@@ -133,16 +165,65 @@ func _find_opponent() -> player:
 			return p
 	return null
 
+## Living enemies chasing this player. Their `target` already ties them to
+## our world; the world check is a second guard.
+func _my_enemies() -> Array[Node2D]:
+	var mine: Array[Node2D] = []
+	for e: Node2D in get_tree().get_nodes_in_group("enemy"):
+		if e.get("target") == _player and _same_world(e) and not e.is_queued_for_deletion():
+			mine.append(e)
+	return mine
+
+func _nearest_enemy() -> Node2D:
+	var best: Node2D = null
+	var best_dist := INF
+	for e in _my_enemies():
+		var d := _player.global_position.distance_squared_to(e.global_position)
+		if d < best_dist:
+			best_dist = d
+			best = e
+	return best
+
+## Every bullet in our world, ours and the enemies'.
+func _bullets_in_world() -> Array[Area2D]:
+	var found: Array[Area2D] = []
+	for b: Area2D in get_tree().get_nodes_in_group("player_bullet") \
+			+ get_tree().get_nodes_in_group("enemy_bullet"):
+		if _same_world(b):
+			found.append(b)
+	return found
+
+## Upgrades offered in our world that we can still take.
+func _offered_upgrades() -> Array[Upgrade]:
+	var found: Array[Upgrade] = []
+	for u: Upgrade in get_tree().get_nodes_in_group("upgrade"):
+		if _same_world(u) and not u.is_queued_for_deletion() and u.is_available(_player):
+			found.append(u)
+	return found
+
+## Score = profile.upgrade_weights[pick_id] (default 1) plus a little jitter;
+## a bullet upgrade always wins.
+func _best_upgrade() -> Upgrade:
+	var best: Upgrade = null
+	var best_score := -INF
+	for u in _offered_upgrades():
+		var score: float = profile.upgrade_weights.get(u.pick_id(), 1.0)
+		score += _rng.randf() * UPGRADE_JITTER
+		if u is BulletUpgrade:
+			score += BULLET_UPGRADE_BONUS
+		if score > best_score:
+			best_score = score
+			best = u
+	return best
+
 ## The incoming bullet that will reach us soonest, counting only bullets seen
 ## for at least reaction_time. Each bullet gets one shield-or-dodge roll.
 func _most_urgent_threat() -> Area2D:
-	var bullets := get_tree().get_nodes_in_group("player_bullet") \
-		+ get_tree().get_nodes_in_group("enemy_bullet")
 	var alive := {}
 	var best: Area2D = null
 	var best_time := INF
-	for b: Area2D in bullets:
-		if not _same_world(b) or b.get("shooter") == _player:
+	for b in _bullets_in_world():
+		if b.get("shooter") == _player:
 			continue
 		var id := b.get_instance_id()
 		alive[id] = true
@@ -170,20 +251,22 @@ func _shield_usable() -> bool:
 
 # ── Steering ──────────────────────────────────────────────────────────────────
 
-## Circle the opponent while pulling toward preferred_range.
-func _strafe(to_opponent: Vector2) -> Vector2:
-	var distance := to_opponent.length()
+## Circle the target (opponent or enemy) while pulling toward preferred_range.
+func _strafe(to_target: Vector2) -> Vector2:
+	var distance := to_target.length()
 	if distance < 0.01:
 		return Vector2.RIGHT * _strafe_sign
-	var radial := to_opponent / distance
+	var radial := to_target / distance
 	var push := clampf((distance - profile.preferred_range) / RANGE_SOFTNESS, -1.0, 1.0)
 	return (radial.orthogonal() * _strafe_sign + radial * push * 1.5).normalized()
 
-## Aim where the opponent will be when the bullet arrives, scaled by skill.
-func _lead_aim(opponent: player) -> Vector2:
-	var to_target := opponent.global_position - _player.global_position
+## Aim where the target will be when the bullet arrives, scaled by skill.
+## Players and enemies are both CharacterBody2D, so both have a velocity.
+func _lead_aim(target: Node2D) -> Vector2:
+	var to_target := target.global_position - _player.global_position
 	var flight_time := to_target.length() / BULLET_SPEED
-	var predicted := opponent.global_position + opponent.velocity * flight_time * profile.lead_accuracy
+	var velocity: Vector2 = target.get("velocity") if "velocity" in target else Vector2.ZERO
+	var predicted := target.global_position + velocity * flight_time * profile.lead_accuracy
 	return (predicted - _player.global_position).normalized()
 
 ## Step sideways off the bullet's line, toward whichever side we're already on.

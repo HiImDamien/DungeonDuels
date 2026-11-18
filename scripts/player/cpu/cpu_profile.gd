@@ -19,6 +19,7 @@ class_name CpuProfile
 @export var dodge_radius: float = 14.0
 ## Distance (px) the CPU tries to keep from its target.
 @export var preferred_range: float = 80.0
-## Upgrade id → how much the CPU wants it. Empty = all equal. Used once the
-## CPU plays the dungeon (#33).
+## Upgrade id (Upgrade.pick_id(), e.g. "attack_rate") → how much the CPU
+## wants it after a room clear. Missing ids weigh 1.0, so empty = all equal.
+## A bullet upgrade (offered after a boss) always wins regardless.
 @export var upgrade_weights: Dictionary = {}

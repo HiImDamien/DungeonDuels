@@ -10,6 +10,7 @@ var description: String = ""
 var room_manager = null
 
 func _ready() -> void:
+	add_to_group("upgrade")  # CpuBrain looks for offered upgrades
 	body_entered.connect(_on_body_entered)
 
 ## Whether this upgrade should be offered to (and can be picked up by) the
