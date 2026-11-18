@@ -80,6 +80,7 @@ func _on_room_cleared() -> void:
 
 	var was_boss := _is_boss_room(rooms_completed)
 	rooms_completed += 1
+	GameState.record_room_cleared(player_instance.player_index)
 
 	if was_boss:
 		GameState.notify_opponent(player_instance.player_index, "Opponent Cleared Boss")

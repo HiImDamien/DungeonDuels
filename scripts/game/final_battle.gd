@@ -40,6 +40,7 @@ func _on_player_eliminated(loser: player) -> void:
 	_game_over = true
 	$PauseMenu.enabled = false
 	var winner := 2 if loser.player_index == 1 else 1
+	GameState.log_match_result(winner)
 	_show_winner("P%d Wins!" % winner)
 
 func _show_winner(text: String) -> void:
