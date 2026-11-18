@@ -651,30 +651,79 @@ func _test_solo_match() -> void:
 		"solo: P1 is on the keyboard and P2 has no bindings")
 	check(PlayerDevices.devices[2] == PlayerDevices.CPU, "solo: the empty side is the CPU")
 	var joy0 := InputEventJoypadButton.new()
-	check(PlayerDevices.player_for_event(joy0) == 0, "solo: controllers don't control the idle P2")
-	await wait(3.5)  # grace period
+	check(PlayerDevices.player_for_event(joy0) == 0, "solo: controllers don't control the CPU's P2")
 	var p1 := find_player(1)
 	var p2 := find_player(2)
+	var brain: CpuBrain = p2.get_node_or_null("CpuBrain")
+	check(brain != null and p2.input is CpuInput
+		and p1.get_node_or_null("CpuBrain") == null and p1.input is DeviceInput,
+		"solo dungeon: P2 gets a CpuBrain and P1 stays human on DeviceInput")
+	if brain == null:
+		return
+	brain.rng_seed = 33
+	await wait(3.5)  # grace period
 	var p1_start := p1.global_position
-	var p2_start := p2.global_position
 	await hold_keys([KEY_D], 0.4)
-	for b in [JOY_BUTTON_A, JOY_BUTTON_DPAD_RIGHT]:
-		for d in [0, 1]:
-			await press(b, d)
 	check(p1.global_position.distance_to(p1_start) > 1.0, "solo: P1 moves with the keyboard")
-	check(p2.global_position.distance_to(p2_start) < 1.0, "solo: P2 stands idle")
+	check(PlayerDevices.ACTIONS.all(func(a): return InputMap.action_get_events("p2_" + a).is_empty()),
+		"the CPU plays without touching the InputMap")
 
-	check(p1.input is DeviceInput and p2.input is DeviceInput, "players default to DeviceInput")
-	var cpu := CpuInput.new()
-	cpu.move = Vector2.RIGHT
-	p2.input = cpu
-	var cpu_start := p2.global_position
-	await wait(0.4)
-	check(p2.global_position.x > cpu_start.x + 1.0
-		and PlayerDevices.ACTIONS.all(func(a): return InputMap.action_get_events("p2_" + a).is_empty()),
-		"a player driven by CpuInput moves right without touching the InputMap")
-	check(p2.get_node_or_null("CpuBrain") == null, "the CPU has no brain in the dungeon yet (#33)")
-	await _test_cpu_final_battle()
+	await _test_cpu_dungeon(p1, p2, brain)
+	var dungeon_stats := PlayerStats.new()
+	dungeon_stats.capture(p2)
+	await _test_cpu_final_battle(dungeon_stats)
+
+# ── CPU opponent in the dungeon (#33) ─────────────────────────────────────────
+
+## The CPU only sees its own world. Both worlds use the same coordinates, so a
+## bullet in P1's world sitting on P2's position would fool a missing filter.
+func _check_cpu_perception(p1: player, p2: player, brain: CpuBrain) -> void:
+	var mine := brain._my_enemies()
+	var theirs := enemies_near(p1)
+	check(not mine.is_empty() and mine.all(func(e): return e.target == p2)
+		and theirs.all(func(e): return not mine.has(e)),
+		"the CPU only sees enemies chasing it (%d), none of P1's (%d)" % [mine.size(), theirs.size()])
+
+	var bullet_scene := load("res://scenes/enemy/enemy_bullet.tscn")
+	var foreign: Area2D = bullet_scene.instantiate()
+	foreign.speed = 0.0
+	p1.get_parent().add_child(foreign)
+	foreign.global_position = p2.global_position
+	var own: Area2D = bullet_scene.instantiate()
+	own.speed = 0.0
+	p2.get_parent().add_child(own)
+	own.global_position = Vector2(-500, -500)  # far outside the room, harmless
+	var seen := brain._bullets_in_world()
+	check(seen.has(own) and not seen.has(foreign),
+		"the CPU sees bullets in its own world but not one from P1's world on its position")
+	foreign.queue_free()
+	own.queue_free()
+
+func _test_cpu_dungeon(p1: player, p2: player, brain: CpuBrain) -> void:
+	print("Solo dungeon: the CPU plays its own world")
+	_check_cpu_perception(p1, p2, brain)
+	var rm2 = room_manager_for(p2)
+	var limit := 30.0
+	var waited := 0.0
+	var moved := false
+	var fired := false
+	var start := p2.global_position
+	var fired_before: float = p2.current_weapon.last_fire_time
+	while waited < limit and not (rm2.rooms_completed >= 1 and GameState.picks[2].size() >= 1):
+		await wait(0.25)
+		waited += 0.25
+		moved = moved or p2.global_position.distance_to(start) > 4.0
+		fired = fired or p2.current_weapon.last_fire_time > fired_before
+	check(moved and fired, "the CPU moves and shoots in the dungeon")
+	check(rm2.rooms_completed >= 1 and p2.kills > 0,
+		"the CPU clears a room on its own (%d rooms, %d kills in %.1fs)" % [rm2.rooms_completed, p2.kills, waited])
+	check(GameState.picks[2].size() >= 1,
+		"the CPU walks onto an upgrade after the clear (picks %s)" % str(GameState.picks[2]))
+	check(GameState.picks[1].is_empty() and rm2.rooms_completed == GameState.rooms_cleared[2],
+		"the CPU's clears and picks are counted for P2 only")
+	# The next room loads with fresh enemies for it to fight.
+	await wait(0.5)
+	check(brain._my_enemies().size() > 0, "after its pick the CPU's next room loads with enemies")
 
 # ── CPU opponent in the final battle (#32) ────────────────────────────────────
 
@@ -691,7 +740,7 @@ func _cpu_frozen_while_paused(cpu: player) -> void:
 	await wait(3.8)
 	check(not get_tree().paused, "P1 resumes the final battle")
 
-func _test_cpu_final_battle() -> void:
+func _test_cpu_final_battle(dungeon_stats: PlayerStats) -> void:
 	print("Solo final battle vs the CPU")
 	GameState.time_remaining = 0.05
 	await wait(0.5)
@@ -700,6 +749,13 @@ func _test_cpu_final_battle() -> void:
 	if GameState.phase != GameState.Phase.FINAL_BATTLE or f1 == null or f2 == null:
 		_fail("solo: the timer running out should start the final battle")
 		return
+	check(f2.max_health == dungeon_stats.max_health and f2.speed == dungeon_stats.speed
+		and f2.kills == dungeon_stats.kills
+		and is_equal_approx(f2.current_weapon.fire_rate, dungeon_stats.fire_rate)
+		and f2.current_weapon.bullet_modes == dungeon_stats.bullet_modes
+		and f2.shield.max_health == dungeon_stats.shield_max_health
+		and is_equal_approx(f2.shield.recharge_interval, dungeon_stats.shield_recharge_interval),
+		"the CPU's dungeon stats carry into the final battle (%d kills)" % f2.kills)
 	var brain: CpuBrain = f2.get_node_or_null("CpuBrain")
 	check(brain != null and f2.input is CpuInput
 		and f1.get_node_or_null("CpuBrain") == null and f1.input is DeviceInput,
@@ -758,6 +814,8 @@ func _test_cpu_final_battle() -> void:
 	check(record is Dictionary and record.get("winner") == 2.0
 		and record.get("p2", {}).get("device") == "cpu",
 		"the balance log records the CPU's win with device 'cpu'")
+	check(record is Dictionary and not record.get("p2", {}).get("picks", []).is_empty(),
+		"the balance log has the CPU's dungeon picks")
 
 # ── Balance log (#30) ─────────────────────────────────────────────────────────
 # Kept in one block so it merges cleanly with other sections' additions.
