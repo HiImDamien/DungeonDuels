@@ -300,6 +300,7 @@ func _test_join_screen(join: JoinScreen) -> Node:
 	await press_key(KEY_ENTER)
 	await get_tree().process_frame
 	check(join.solo and join.countdown_left > 0.0, "ready again starts a solo countdown")
+	check(join._side_labels[R].text.contains("CPU"), "the empty side shows CPU in solo play")
 	await press(JOY_BUTTON_A, 1)
 	await get_tree().process_frame
 	check(not join.solo and join.countdown_left < 0.0, "a second device joining cancels solo")
@@ -592,6 +593,7 @@ func _run() -> void:
 	_check_balance_log_after_quit()
 
 	await _test_solo_match()
+	_balance_log_teardown()
 	_finish()
 
 func _test_solo_match() -> void:
@@ -609,6 +611,7 @@ func _test_solo_match() -> void:
 	check(InputMap.action_get_events("shoot").all(func(e): return e is InputEventKey)
 		and PlayerDevices.ACTIONS.all(func(a): return InputMap.action_get_events("p2_" + a).is_empty()),
 		"solo: P1 is on the keyboard and P2 has no bindings")
+	check(PlayerDevices.devices[2] == PlayerDevices.CPU, "solo: the empty side is the CPU")
 	var joy0 := InputEventJoypadButton.new()
 	check(PlayerDevices.player_for_event(joy0) == 0, "solo: controllers don't control the idle P2")
 	await wait(3.5)  # grace period
@@ -632,6 +635,91 @@ func _test_solo_match() -> void:
 	check(p2.global_position.x > cpu_start.x + 1.0
 		and PlayerDevices.ACTIONS.all(func(a): return InputMap.action_get_events("p2_" + a).is_empty()),
 		"a player driven by CpuInput moves right without touching the InputMap")
+	check(p2.get_node_or_null("CpuBrain") == null, "the CPU has no brain in the dungeon yet (#33)")
+	await _test_cpu_final_battle()
+
+# ── CPU opponent in the final battle (#32) ────────────────────────────────────
+
+func _cpu_frozen_while_paused(cpu: player) -> void:
+	var pause_menu: PauseMenu = get_tree().current_scene.get_node("PauseMenu")
+	await press_key(KEY_ESCAPE)
+	var paused_at := cpu.global_position
+	var fired_at: float = cpu.current_weapon.last_fire_time
+	await wait(0.6)
+	check(get_tree().paused and pause_menu.paused_by == 1
+		and cpu.global_position == paused_at and cpu.current_weapon.last_fire_time == fired_at,
+		"pausing freezes the CPU")
+	await press_key(KEY_ESCAPE)
+	await wait(3.8)
+	check(not get_tree().paused, "P1 resumes the final battle")
+
+func _test_cpu_final_battle() -> void:
+	print("Solo final battle vs the CPU")
+	GameState.time_remaining = 0.05
+	await wait(0.5)
+	var f1 := find_player(1)
+	var f2 := find_player(2)
+	if GameState.phase != GameState.Phase.FINAL_BATTLE or f1 == null or f2 == null:
+		_fail("solo: the timer running out should start the final battle")
+		return
+	var brain: CpuBrain = f2.get_node_or_null("CpuBrain")
+	check(brain != null and f2.input is CpuInput
+		and f1.get_node_or_null("CpuBrain") == null and f1.input is DeviceInput,
+		"solo final battle: P2 gets a CpuBrain and P1 stays human")
+	if brain == null:
+		return
+	check(brain.profile != null and is_equal_approx(brain.profile.preferred_range, 80.0),
+		"the CPU uses the Medium profile")
+	brain.rng_seed = 32
+
+	var start := f2.global_position
+	await wait(1.0)
+	check(f2.stunned and f2.global_position.distance_to(start) < 1.0 and not f2.input.is_shooting(),
+		"the CPU waits out the countdown")
+	while f2.stunned:
+		await get_tree().physics_frame
+
+	var grace_pos := f2.global_position
+	var fired_before: float = f2.current_weapon.last_fire_time
+	var moved := false
+	var fired := false
+	var elapsed := 0.0
+	while elapsed < 3.0 and not (moved and fired):
+		await wait(0.1)
+		elapsed += 0.1
+		moved = moved or f2.global_position.distance_to(grace_pos) > 4.0
+		fired = fired or f2.current_weapon.last_fire_time > fired_before
+	check(moved and fired, "the CPU moves and fires within 3s after grace (%.1fs)" % elapsed)
+
+	await _cpu_frozen_while_paused(f2)
+
+	# P1 shoots straight at the CPU (kept invincible so the duel doesn't end).
+	var shielded := false
+	for i in 8:
+		f1.invincible = true
+		f1.current_weapon.fire(f1.global_position.direction_to(f2.global_position))
+		for j in 5:
+			await wait(0.1)
+			shielded = shielded or f2.shield.is_active
+	check(shielded, "the CPU raises its shield against incoming shots")
+	f1.invincible = false
+
+	# P1 stands still from here on and should lose.
+	var limit := 30.0
+	var waited := 0.0
+	while not f1.is_dead and waited < limit:
+		await wait(0.25)
+		waited += 0.25
+	check(f1.is_dead, "the CPU eliminates an idle P1 within %ds (took %.1fs)" % [limit, waited])
+	await wait(0.3)
+	var win_labels: Array = get_tree().current_scene.get_children().filter(
+		func(c): return c is Label and c.text.ends_with("Wins!"))
+	check(win_labels.size() == 1 and win_labels[0].text == "P2 Wins!", "the CPU winning shows 'P2 Wins!'")
+	var lines := _balance_log_lines()
+	var record = JSON.parse_string(lines[0]) if lines.size() == 1 else null
+	check(record is Dictionary and record.get("winner") == 2.0
+		and record.get("p2", {}).get("device") == "cpu",
+		"the balance log records the CPU's win with device 'cpu'")
 
 # ── Balance log (#30) ─────────────────────────────────────────────────────────
 # Kept in one block so it merges cleanly with other sections' additions.
@@ -695,5 +783,8 @@ func _check_balance_log_reset() -> void:
 
 func _check_balance_log_after_quit() -> void:
 	check(_balance_log_lines().size() == 1, "quitting mid-match writes no balance log line")
+	DirAccess.remove_absolute(BALANCE_LOG_PATH)  # the solo match writes a fresh one
+
+func _balance_log_teardown() -> void:
 	DirAccess.remove_absolute(BALANCE_LOG_PATH)
 	BalanceLog.path = "user://balance_log.jsonl"
