@@ -6,6 +6,10 @@ extends Control
 ## A readies up, B un-readies / steps back / leaves. Once both players are
 ## ready a countdown runs, and backing out cancels it.
 ##
+## Solo play: a single ready player can press A / Enter again to start alone.
+## The empty side's player is still spawned but has no device, so it stands
+## idle (useful for trying the game with one controller or a keyboard).
+##
 ## Joining is driven purely by input events, never by a list of connected
 ## controllers: browsers don't report a gamepad until a button on it is pressed.
 
@@ -30,6 +34,9 @@ const GRAY := Color(0.7, 0.7, 0.75)
 var tokens: Array[Dictionary] = []
 ## Seconds left before the match starts, or -1 while not counting down.
 var countdown_left := -1.0
+## True once a lone ready player has asked to play solo. Cleared by backing
+## out or by a second device joining.
+var solo := false
 ## Whether to suggest pressing again / restarting the browser when no
 ## controller shows up. Web only: browsers can lose track of a controller
 ## (seen with Chrome on macOS) until they're restarted. Tests can turn it on.
@@ -84,9 +91,15 @@ func _process(delta: float) -> void:
 	if countdown_left <= 0.0:
 		_start_match()
 
-## Both players are on different sides and ready.
+## Both players are on different sides and ready, or one ready player chose solo.
 func all_ready() -> bool:
+	if solo:
+		return can_play_solo()
 	return tokens.size() == MAX_PLAYERS and tokens.all(func(t): return t.ready and t.side != MIDDLE)
+
+## Exactly one device has joined, picked a side and readied up.
+func can_play_solo() -> bool:
+	return tokens.size() == 1 and tokens[0].ready and tokens[0].side != MIDDLE
 
 func token_for(device: String) -> Dictionary:
 	for token in tokens:
@@ -125,6 +138,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				get_tree().change_scene_to_file("res://scenes/ui/title_screen.tscn")
 		elif tokens.size() < MAX_PLAYERS:
 			tokens.append({device = device, side = MIDDLE, ready = false})
+			solo = false
 		else:
 			show_message("Two players have already joined")
 	elif _is_left(event):
@@ -132,7 +146,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif _is_right(event):
 		move(token, RIGHT)
 	elif _is_confirm(event):
-		if token.side != MIDDLE:
+		if token.ready and can_play_solo():
+			solo = true
+		elif token.side != MIDDLE:
 			token.ready = true
 	elif _is_back(event):
 		back(token)
@@ -150,6 +166,7 @@ func move(token: Dictionary, direction: int) -> void:
 
 ## B: un-ready, else step back to the middle, else leave.
 func back(token: Dictionary) -> void:
+	solo = false
 	if token.ready:
 		token.ready = false
 	elif token.side != MIDDLE:
@@ -201,6 +218,7 @@ func _on_joy_connection_changed(id: int, connected: bool) -> void:
 	var token := token_for(device)
 	if not token.is_empty():
 		tokens.erase(token)
+		solo = false
 		_refresh()
 	show_message("%s disconnected" % shown)
 
@@ -227,7 +245,11 @@ func _refresh() -> void:
 	for side in _side_labels:
 		var device := device_on(side)
 		var label: Label = _side_labels[side]
-		if device == "":
+		if device == "" and solo:
+			label.text = "\n(idle)\n\nSOLO PLAY"
+		elif device == "" and can_play_solo():
+			label.text = "\n(empty)\n\nA / Enter again:\nplay solo"
+		elif device == "":
 			label.text = "\n(empty)"
 		else:
 			var token := token_for(device)

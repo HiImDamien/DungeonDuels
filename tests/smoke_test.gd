@@ -288,6 +288,27 @@ func _test_join_screen(join: JoinScreen) -> Node:
 		await press(JOY_BUTTON_B, 1)
 	check(join.tokens.is_empty(), "the controller can back all the way out too")
 
+	await join_side(PlayerDevices.KEYBOARD, L)
+	await get_tree().process_frame
+	check(join.can_play_solo() and not join.solo and join.countdown_left < 0.0,
+		"one ready player alone doesn't start a countdown by itself")
+	check(join._side_labels[R].text.contains("play solo"), "the empty side offers solo play")
+	await press_key(KEY_ENTER)
+	await get_tree().process_frame
+	check(join.solo and join.countdown_left > 0.0, "ready again starts a solo countdown")
+	await press(JOY_BUTTON_A, 1)
+	await get_tree().process_frame
+	check(not join.solo and join.countdown_left < 0.0, "a second device joining cancels solo")
+	await press(JOY_BUTTON_B, 1)
+	await press_key(KEY_ENTER)
+	await press_key(KEY_BACKSPACE)
+	await get_tree().process_frame
+	check(not join.solo and join.countdown_left < 0.0 and not join.token_for("keyboard").get("ready"),
+		"backing out cancels solo")
+	for i in 2:
+		await press_key(KEY_BACKSPACE)
+	check(join.tokens.is_empty(), "everyone has left again")
+
 	await press_key(KEY_ESCAPE)
 	await wait(0.3)
 	check(get_tree().current_scene.name == "TitleScreen", "back with nobody joined returns to the title")
@@ -541,4 +562,34 @@ func _run() -> void:
 	check(get_tree().current_scene.name == "TitleScreen" and not get_tree().paused,
 		"Quit to Menu returns to the title, unpaused")
 
+	await _test_solo_match()
 	_finish()
+
+func _test_solo_match() -> void:
+	print("Solo play")
+	await press_key(KEY_ENTER)
+	await wait(0.3)
+	var join: Node = get_tree().current_scene
+	if not join is JoinScreen:
+		_fail("Play from the title should open the join screen for solo play")
+		return
+	await join_side(PlayerDevices.KEYBOARD, JoinScreen.LEFT)
+	await press_key(KEY_ENTER)
+	await wait(JoinScreen.COUNTDOWN + 0.3)
+	check(get_tree().current_scene.name == "Game", "a solo countdown starts the match")
+	check(InputMap.action_get_events("shoot").all(func(e): return e is InputEventKey)
+		and PlayerDevices.ACTIONS.all(func(a): return InputMap.action_get_events("p2_" + a).is_empty()),
+		"solo: P1 is on the keyboard and P2 has no bindings")
+	var joy0 := InputEventJoypadButton.new()
+	check(PlayerDevices.player_for_event(joy0) == 0, "solo: controllers don't control the idle P2")
+	await wait(3.5)  # grace period
+	var p1 := find_player(1)
+	var p2 := find_player(2)
+	var p1_start := p1.global_position
+	var p2_start := p2.global_position
+	await hold_keys([KEY_D], 0.4)
+	for b in [JOY_BUTTON_A, JOY_BUTTON_DPAD_RIGHT]:
+		for d in [0, 1]:
+			await press(b, d)
+	check(p1.global_position.distance_to(p1_start) > 1.0, "solo: P1 moves with the keyboard")
+	check(p2.global_position.distance_to(p2_start) < 1.0, "solo: P2 stands idle")
