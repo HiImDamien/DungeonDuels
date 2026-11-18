@@ -29,6 +29,7 @@ func apply_modes(modes: Array[String], owning_player) -> void:
 # ── Lifecycle ─────────────────────────────────────────────────────────────────
 
 func _ready() -> void:
+	add_to_group("player_bullet")  # CpuBrain looks for incoming shots
 	monitoring  = true
 	monitorable = true
 	_prev_position = global_position
