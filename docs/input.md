@@ -34,5 +34,5 @@ only report a gamepad after one of its buttons is pressed.
 Enter again sets `JoinScreen.solo` and starts the countdown. `assign()` then gets
 `PlayerDevices.CPU` (`"cpu"`) for the empty side, which erases that player's actions and adds
 none, so no device can steer or pause for them. `CpuBrain.attach_if_cpu()` gives them a brain in
-the final battle; in the dungeon they still stand idle until #33. See `docs/cpu-opponent.md`.
+the dungeon and in the final battle. See `docs/cpu-opponent.md`.
 A second device joining, backing out, or the device disconnecting clears `solo`.

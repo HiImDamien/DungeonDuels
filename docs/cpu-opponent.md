@@ -1,7 +1,7 @@
 # CPU opponent design
 
-Status: design agreed Nov 18 2026. #31 (PlayerInput) and #32 (duel, Medium only) are built;
-#33 (dungeon) and #34 (difficulty), then #48 (navigation, once rooms have walls).
+Status: design agreed Nov 18 2026. #31 (PlayerInput), #32 (duel, Medium only) and #33 (dungeon) are
+built; next #34 (difficulty), then #48 (navigation, once rooms have walls).
 Decision: the CPU drives a normal `Player` through a **controller abstraction**. It does not
 fake input through the InputMap.
 
@@ -92,12 +92,15 @@ Split screen has **two worlds in one SceneTree**, so group lookups return nodes 
 ### Behaviors
 
 All behaviors write a desired `move`/`aim`/`shoot`/`shield`. Dodge can override movement.
+The brain tells the two phases apart by what it sees: an opponent in its own world means the
+final battle, otherwise it's in the dungeon. The same brain follows the player from room to room,
+because `RoomManager` re-parents the player rather than respawning it.
 
 | Situation | Behavior |
 |---|---|
 | A bullet will pass within `dodge_radius` in the next `reaction_time` seconds | **Dodge**: move perpendicular to the bullet's path, away from walls. If `shield_skill` passes and the shield isn't broken, **shield** toward it instead (then no shooting). |
-| Dungeon, enemies alive | **Fight**: aim at the nearest (or most dangerous) enemy with `aim_error`, kite at `preferred_range`, shoot. |
-| Dungeon, room cleared, upgrades offered | **Collect**: score the offered upgrades with `upgrade_weights` and walk to the best one. |
+| Dungeon, enemies alive | **Fight**: aim at the nearest enemy chasing it (lead and `aim_error` as in the duel), kite at `preferred_range` with the duel's strafe, shoot. |
+| Dungeon, room cleared, upgrades offered | **Collect**: score the offered upgrades with `upgrade_weights` (missing ids weigh 1, plus a little random jitter; a `BulletUpgrade` always wins) and walk straight to the best one, without wall sliding. |
 | Final battle | **Duel**: strafe around the opponent at `preferred_range`, lead the shot (`lead_accuracy` × predicted position), shoot, react to bullets as above. |
 
 Pathing: rooms are open today, so steering is direct seek plus a wall-avoidance raycast.
