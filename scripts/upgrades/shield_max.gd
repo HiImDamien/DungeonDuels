@@ -1,7 +1,7 @@
 extends Upgrade
 class_name shield_max
 
-@export var increase_amount := 5
+@export var increase_amount := 2
 
 func _init() -> void:
 	description = "Max\nShield"
