@@ -7,8 +7,8 @@ extends Control
 ## ready a countdown runs, and backing out cancels it.
 ##
 ## Solo play: a single ready player can press A / Enter again to start alone.
-## The empty side's player is still spawned but has no device, so it stands
-## idle (useful for trying the game with one controller or a keyboard).
+## The empty side becomes the CPU (PlayerDevices.CPU): no device can steer it,
+## and it fights back in the final battle. In the dungeon it stands idle (#33).
 ##
 ## Joining is driven purely by input events, never by a list of connected
 ## controllers: browsers don't report a gamepad until a button on it is pressed.
@@ -236,8 +236,13 @@ func _start_match() -> void:
 	if _started:
 		return
 	_started = true
-	PlayerDevices.assign(device_on(LEFT), device_on(RIGHT))
+	PlayerDevices.assign(_device_or_cpu(LEFT), _device_or_cpu(RIGHT))
 	get_tree().change_scene_to_file("res://scenes/game/game.tscn")
+
+## In solo play the empty side is the CPU.
+func _device_or_cpu(side: int) -> String:
+	var device := device_on(side)
+	return PlayerDevices.CPU if device == "" and solo else device
 
 # ── Drawing ───────────────────────────────────────────────────────────────────
 
@@ -246,9 +251,9 @@ func _refresh() -> void:
 		var device := device_on(side)
 		var label: Label = _side_labels[side]
 		if device == "" and solo:
-			label.text = "\n(idle)\n\nSOLO PLAY"
+			label.text = "\nCPU\n\nSOLO PLAY"
 		elif device == "" and can_play_solo():
-			label.text = "\n(empty)\n\nA / Enter again:\nplay solo"
+			label.text = "\n(empty)\n\nA / Enter again:\nplay solo vs CPU"
 		elif device == "":
 			label.text = "\n(empty)"
 		else:
