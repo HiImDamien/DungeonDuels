@@ -87,10 +87,8 @@ func activate():
 	recharge_delay_timer.stop()
 
 	is_active = true
-	monitoring = true
-	monitorable = true
+	_set_collision(true)
 	visible = true
-	collision_polygon.disabled = false
 	rotation = aim_direction.angle()
 
 func deactivate():
@@ -98,13 +96,20 @@ func deactivate():
 		return
 
 	is_active = false
-	monitoring = false
-	monitorable = false
+	_set_collision(false)
 	visible = false
-	collision_polygon.disabled = true
 
 	if not is_broken and not on_cooldown and health < max_health:
 		recharge_delay_timer.start()
+
+## Deferred: deactivate() also runs inside physics callbacks (a bullet breaking
+## the shield, a hit killing the player), where Godot refuses to change
+## monitoring state directly. Both directions are deferred so they apply in
+## order. Bullets check is_active, which still changes immediately.
+func _set_collision(on: bool) -> void:
+	set_deferred("monitoring", on)
+	set_deferred("monitorable", on)
+	collision_polygon.set_deferred("disabled", not on)
 
 func take_damage(amount: int = 1) -> void:
 	if is_broken:
