@@ -198,8 +198,12 @@ func _test_title_and_controls() -> Node:
 		"controller labels come from the input map")
 	check(InputLabels.keyboard_label(["move_up", "move_left", "move_down", "move_right"]) == "W A S D"
 		and InputLabels.keyboard_label(["aim_up", "aim_left", "aim_down", "aim_right"]) == "Arrow Keys"
-		and InputLabels.keyboard_label(["shoot"]) == "Arrow Keys",
+		and InputLabels.keyboard_label(["shoot"]) == "Arrow Keys"
+		and InputLabels.keyboard_label(["pause"]) == "Esc / P",
 		"keyboard labels come from the input map")
+	check(ProjectSettings.get_setting("display/window/size/mode") == DisplayServer.WINDOW_MODE_FULLSCREEN
+		and ProjectSettings.get_setting("display/window/size/mode.web") == DisplayServer.WINDOW_MODE_WINDOWED,
+		"desktop starts fullscreen, but web builds don't force browser fullscreen")
 	var font: Font = ControlsScreen.FONT
 	var lines := ControlsScreen.keyboard_lines()
 	var widest := 0.0
@@ -400,6 +404,13 @@ func _test_pause(game: Node) -> void:
 	await press_key(KEY_ESCAPE)
 	await wait(3.8)
 	check(not get_tree().paused, "Esc resumes for P1")
+	# P is a second pause key, since in browser fullscreen Esc only exits fullscreen.
+	await press_key(KEY_P)
+	check(get_tree().paused and pause_menu.paused_by == 1, "P also pauses as P1")
+	await press_key(KEY_P)
+	await wait(3.8)
+	check(not get_tree().paused, "P resumes for P1")
+	GameState.pauses_left[1] = GameState.PAUSES_PER_PLAYER
 
 # ── The test ──────────────────────────────────────────────────────────────────
 

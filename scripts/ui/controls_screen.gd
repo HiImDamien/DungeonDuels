@@ -36,7 +36,7 @@ func _ready() -> void:
 	_add_label(lines[0], FONT, 8, Color.WHITE, 154)
 	_add_label(lines[1], FONT, 8, Color.WHITE, 164)
 
-	_add_label("B / Circle  or  Esc:  Back", FONT, 8, GRAY, 186)
+	_add_label("B / Circle  or  Backspace:  Back", FONT, 8, GRAY, 186)
 
 ## "KEYBOARD (P2)" for whoever picked the keyboard on the join screen,
 ## "KEYBOARD (NOT IN USE)" if two controllers joined, or just "KEYBOARD" before

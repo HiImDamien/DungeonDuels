@@ -71,10 +71,14 @@ static func keyboard_label(actions: Array) -> String:
 	sorted.sort()
 	if sorted == ["Down", "Left", "Right", "Up"]:
 		return "Arrow Keys"
-	return " ".join(keys)
+	# Several keys for one action are alternatives ("Esc / P"); one key per
+	# action in a multi-action row spell out a set ("W A S D").
+	return " ".join(keys) if actions.size() > 1 else " / ".join(keys)
 
 static func _key_name(event: InputEventKey) -> String:
 	var keycode := event.keycode
 	if keycode == KEY_NONE:
 		keycode = event.physical_keycode
+	if keycode == KEY_ESCAPE:
+		return "Esc"
 	return OS.get_keycode_string(keycode)
