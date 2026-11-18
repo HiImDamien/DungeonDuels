@@ -1,6 +1,6 @@
 class_name PauseMenu
 extends CanvasLayer
-## In-game pause menu. Start/Options (or Esc for P1) freezes the whole game.
+## In-game pause menu. Start/Options, or Esc / P on the keyboard, freezes the whole game.
 ##
 ## Rules, to keep pausing from being abused:
 ##  - each player has GameState.PAUSES_PER_PLAYER pauses per match
