@@ -10,6 +10,11 @@ const BULLET = preload("res://scenes/player/player_bullet.tscn")
 # Prefix for this player's input action names; set from player_index in _ready().
 var _input_prefix: String = ""
 
+## Where this player's controls come from. Left null, _ready() makes a
+## DeviceInput for _input_prefix. Set it to a CpuInput (before or after
+## _ready()) to let a CPU drive this player through the same rules.
+var input: PlayerInput
+
 var last_aim = Vector2.RIGHT
 var speed: float = 75.0
 const INVINCIBLE_TIME = 3
@@ -60,6 +65,8 @@ func _set_invincible(value: bool) -> void:
 
 func _ready() -> void:
 	_input_prefix = "" if player_index == 1 else "p%d_" % player_index
+	if input == null:
+		input = DeviceInput.new(_input_prefix)
 	health = max_health
 	motion_mode = CharacterBody2D.MOTION_MODE_FLOATING
 	safe_margin = 0.08
@@ -72,14 +79,14 @@ func _process(_delta: float) -> void:
 	if is_dead:
 		return
 
-	var aim = Input.get_vector(_input_prefix + "aim_left", _input_prefix + "aim_right", _input_prefix + "aim_up", _input_prefix + "aim_down")
+	var aim = input.get_aim()
 	if aim.length() > 0.2:
 		last_aim = aim.normalized()
 
 	aim_pivot.rotation = last_aim.angle()
 	shield.set_aim_direction(last_aim)
 
-	var shield_pressed = Input.is_action_pressed(_input_prefix + "shield_activate")
+	var shield_pressed = input.is_shielding()
 
 	# Shield is always available (even during grace stun).
 	if shield_pressed and not shield.is_broken and not shield.on_cooldown:
@@ -89,7 +96,7 @@ func _process(_delta: float) -> void:
 
 	# Shooting is locked during the grace period only.
 	if not stunned:
-		if Input.is_action_pressed(_input_prefix + "shoot") and not shield_pressed:
+		if input.is_shooting() and not shield_pressed:
 			if current_weapon:
 				current_weapon.try_fire(last_aim)
 
@@ -97,11 +104,10 @@ func _physics_process(_delta: float) -> void:
 	if is_dead:
 		return
 
-	var direction = Input.get_vector(_input_prefix + "move_left", _input_prefix + "move_right", _input_prefix + "move_up", _input_prefix + "move_down")
-	var facing = Input.get_axis(_input_prefix + "move_left", _input_prefix + "move_right")
+	var direction = input.get_move()
 	var moving: bool = direction != Vector2.ZERO
 	if moving:
-		animated_sprite.flip_h = facing < 0
+		animated_sprite.flip_h = direction.x < 0
 	velocity = direction.normalized() * speed
 
 	if not invincible:

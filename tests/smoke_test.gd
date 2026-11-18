@@ -616,3 +616,13 @@ func _test_solo_match() -> void:
 			await press(b, d)
 	check(p1.global_position.distance_to(p1_start) > 1.0, "solo: P1 moves with the keyboard")
 	check(p2.global_position.distance_to(p2_start) < 1.0, "solo: P2 stands idle")
+
+	check(p1.input is DeviceInput and p2.input is DeviceInput, "players default to DeviceInput")
+	var cpu := CpuInput.new()
+	cpu.move = Vector2.RIGHT
+	p2.input = cpu
+	var cpu_start := p2.global_position
+	await wait(0.4)
+	check(p2.global_position.x > cpu_start.x + 1.0
+		and PlayerDevices.ACTIONS.all(func(a): return InputMap.action_get_events("p2_" + a).is_empty()),
+		"a player driven by CpuInput moves right without touching the InputMap")
