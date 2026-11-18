@@ -56,5 +56,8 @@ static func _diamond_texture() -> ImageTexture:
 func is_available(p: CharacterBody2D) -> bool:
 	return bullet_mode in modes_available_for(p)
 
+func pick_id() -> String:
+	return bullet_mode
+
 func apply(p: CharacterBody2D) -> void:
 	p.current_weapon.add_bullet_mode(bullet_mode)

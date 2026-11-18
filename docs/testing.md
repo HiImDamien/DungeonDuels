@@ -22,7 +22,8 @@ GODOT=/path/to/Godot tests/run_smoke_test.sh  # if `godot` isn't on PATH
 (device 1) as P2. The rematch joins controllers 1 and 2.
 
 It reaches into private fields (`_root`, `_messages`, `_offered_upgrades`, `_input_prefix`), so
-renaming those breaks it. For a new behavior, add `check(...)` calls in the matching section
+renaming those breaks it. It also points `BalanceLog.path` at a throwaway file, so test runs
+never write to the real balance log. For a new behavior, add `check(...)` calls in the matching section
 rather than writing a separate test.
 
 ## Manual testing

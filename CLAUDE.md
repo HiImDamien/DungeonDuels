@@ -35,6 +35,7 @@ There's no linter or build step. For a new behavior, add `check(...)` calls to `
 | [docs/input.md](docs/input.md) | Player input, `PlayerDevices`, join screen, solo play |
 | [docs/cpu-opponent.md](docs/cpu-opponent.md) | CPU opponent design (`PlayerInput`, `CpuBrain`, profiles) |
 | [docs/ui.md](docs/ui.md) | `MenuList` conventions, overlays, pausing |
+| [docs/balance.md](docs/balance.md) | Balance log: record format, where the file is, `jq` summaries |
 | [docs/testing.md](docs/testing.md) | Smoke test internals and the private fields it depends on |
 | [docs/deployment.md](docs/deployment.md) | CI, itch.io deploy, local web export |
 | [docs/roadmap.md](docs/roadmap.md) | Phases, milestone order, parked ideas |

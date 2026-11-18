@@ -19,6 +19,22 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	GameState.tick(delta)
+	# tick() can end the dungeon and change scene, taking this node out of the tree.
+	if is_inside_tree():
+		_count_deaths()
+
+# ── Dungeon deaths (balance log) ──────────────────────────────────────────────
+
+# Player index → whether that player was dead last frame.
+var _was_dead := {}
+
+## Counts each moment a player goes from alive to dead. Watching is_dead keeps
+## player.gd untouched; a `died` signal there would be the tidier long-term hook.
+func _count_deaths() -> void:
+	for p: player in get_tree().get_nodes_in_group("player"):
+		if p.is_dead and not _was_dead.get(p.player_index, false):
+			GameState.record_death(p.player_index)
+		_was_dead[p.player_index] = p.is_dead
 
 # ── Timer expired → transition to Final Battle ────────────────────────────────
 
