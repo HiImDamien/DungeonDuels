@@ -82,6 +82,7 @@ Pushes to `main` then deploy to itch.io.
 | [docs/testing.md](docs/testing.md) | How the smoke test works |
 | [docs/deployment.md](docs/deployment.md) | CI, itch.io deploy and local Web export |
 | [docs/roadmap.md](docs/roadmap.md) | What's planned next |
+| [docs/itch-page.md](docs/itch-page.md) | Text for the itch.io page |
 
 ## Credits
 
