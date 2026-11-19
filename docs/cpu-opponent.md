@@ -70,9 +70,13 @@ func is_shielding() -> bool
   countdown instead of getting a head start, and while it has no living opponent.
 - `reaction_time` means a bullet must have been on screen that long before the CPU notices it.
   It then checks whether the bullet's path passes within `dodge_radius` in the next 0.6 s
-  (`THREAT_LOOKAHEAD`), and rolls `shield_skill` once per bullet to pick shield or sidestep.
-- Threats are checked every frame (a handful of bullets, so it's cheap). Only strafe direction
-  and aim error wait for the next decision.
+  (`THREAT_LOOKAHEAD`). Each bullet gets one `dodge_skill` roll (react at all?) and one
+  `shield_skill` roll (shield or sidestep). A sidestep is held for 0.25 s (`DODGE_COMMIT`).
+- Threats are checked every frame (a handful of bullets, so it's cheap). Strafe direction, aim
+  error and which enemy to fight wait for the next decision.
+- **Human-looking movement** (#33 playtest: the first version snapped back and forth and reacted
+  on the first frame). Its move direction turns at most `turn_rate` rad/s, so reversals are
+  arcs. A new room's enemies, or upgrades appearing, start a `notice_time` (±25%) hesitation.
 - It uses its own `RandomNumberGenerator`. `seed` is exported so the smoke test is deterministic.
 
 ### Perception: stay inside your own world
@@ -117,10 +121,15 @@ and it slots into the steering step without changing the rest.
 | `lead_accuracy` (0–1) | 0.0 | 0.5 | 0.9 |
 | `shield_skill` (chance to shield a threat) | 0.1 | 0.4 | 0.8 |
 | `dodge_radius` (px) | 8 | 14 | 20 |
+| `dodge_skill` (chance to react to a bullet) | ? | 0.75 | 1.0 |
+| `turn_rate` (rad/s, 0 = instant) | ? | 7 | 0 |
+| `notice_time` (s) | ? | 0.8 | 0 |
 | `preferred_range` (px) | 60 | 80 | 100 |
 | `upgrade_weights` | random | balanced | best-for-duel |
 
-These are starting numbers, tuned in the difficulty issue. Difficulty only changes these
+These are starting numbers, tuned in the difficulty issue. Today only `medium.tres` and
+`hard.tres` exist, and `hard.tres` is Medium's numbers with #33's first, instant reflexes
+(`dodge_skill` 1, `turn_rate` 0, `notice_time` 0); #34 fills in the rest of the Hard column. Difficulty only changes these
 parameters. Easy never gets different code paths, and Hard never gets extra stats.
 
 ## Testing
