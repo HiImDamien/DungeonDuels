@@ -298,6 +298,27 @@ func move_stick(device: int, value: float) -> void:
 		Input.parse_input_event(event)
 		await get_tree().process_frame
 
+## Left / Right on the keyboard cycles Easy / Medium / Hard (wrapping both
+## ways) and ends back on Medium, so later solo checks see the default.
+func _check_difficulty_cycle(join: JoinScreen) -> void:
+	var steps := [[KEY_D, "hard"], [KEY_RIGHT, "easy"], [KEY_LEFT, "hard"], [KEY_A, "medium"]]
+	var ok := true
+	for step in steps:
+		await press_key(step[0])
+		var shown := "Difficulty: <%s>" % step[1].capitalize()
+		ok = ok and PlayerDevices.cpu_difficulty == step[1] \
+			and join._side_labels[JoinScreen.RIGHT].text.contains(shown) \
+			and join.token_for("keyboard").get("side") == JoinScreen.LEFT
+	check(ok, "keyboard Left / Right cycles the CPU's difficulty, wraps, and doesn't move the player")
+	var font: Font = join._side_labels[JoinScreen.RIGHT].get_theme_font("font")
+	var widest := 0.0
+	for d in PlayerDevices.DIFFICULTIES:
+		var text := "Difficulty: <%s>" % d.capitalize()
+		widest = maxf(widest, font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x)
+	var card: Control = join._side_labels[JoinScreen.RIGHT].get_parent()
+	check(widest <= card.size.x,
+		"every difficulty label fits inside the CPU's card (widest %d of %d px)" % [widest, card.size.x])
+
 ## Drives the join screen through its rules, then starts a match with the
 ## keyboard as P1 (left) and controller 2 as P2 (right). Returns the game.
 func _test_join_screen(join: JoinScreen) -> Node:
@@ -346,8 +367,21 @@ func _test_join_screen(join: JoinScreen) -> Node:
 	check(join._side_labels[R].text.contains("play solo"), "the empty side offers solo play")
 	await press_key(KEY_ENTER)
 	await get_tree().process_frame
-	check(join.solo and join.countdown_left > 0.0, "ready again starts a solo countdown")
-	check(join._side_labels[R].text.contains("CPU"), "the empty side shows CPU in solo play")
+	check(join.solo and not join.difficulty_chosen and join.countdown_left < 0.0,
+		"ready again asks for the CPU's difficulty instead of counting down")
+	check(join._side_labels[R].text.contains("CPU")
+		and join._side_labels[R].text.contains("Difficulty: <Medium>"),
+		"the empty side shows the CPU and its difficulty, Medium by default")
+	await _check_difficulty_cycle(join)
+	await press_key(KEY_ENTER)
+	await get_tree().process_frame
+	check(join.difficulty_chosen and join.countdown_left > 0.0
+		and join._side_labels[R].text.contains("Difficulty: Medium"),
+		"Enter on the difficulty starts the solo countdown")
+	await press_key(KEY_BACKSPACE)
+	await get_tree().process_frame
+	check(join.solo and not join.difficulty_chosen and join.countdown_left < 0.0,
+		"back from the solo countdown returns to the difficulty")
 	await press(JOY_BUTTON_A, 1)
 	await get_tree().process_frame
 	check(not join.solo and join.countdown_left < 0.0, "a second device joining cancels solo")
@@ -648,7 +682,8 @@ func _test_solo_match() -> void:
 		_fail("Play from the title should open the join screen for solo play")
 		return
 	await join_side(PlayerDevices.KEYBOARD, JoinScreen.LEFT)
-	await press_key(KEY_ENTER)
+	await press_key(KEY_ENTER)  # play solo
+	await press_key(KEY_ENTER)  # keep the default difficulty
 	await wait(JoinScreen.COUNTDOWN + 0.3)
 	check(get_tree().current_scene.name == "Game", "a solo countdown starts the match")
 	check(InputMap.action_get_events("shoot").all(func(e): return e is InputEventKey)
@@ -677,6 +712,58 @@ func _test_solo_match() -> void:
 	var dungeon_stats := PlayerStats.new()
 	dungeon_stats.capture(p2)
 	await _test_cpu_final_battle(dungeon_stats)
+	await _test_cpu_difficulty_pick()
+
+# ── CPU difficulty (#34) ──────────────────────────────────────────────────────
+
+## The solo player's CPU card (P2's side when the player is on the left).
+func _cpu_card(join: JoinScreen) -> String:
+	return join._side_labels[JoinScreen.RIGHT].text
+
+## Picks Hard with a controller, then checks the brain gets the hard profile
+## and that the choice is kept for the next solo match.
+func _test_cpu_difficulty_pick() -> void:
+	print("CPU difficulty")
+	await press_key(KEY_ENTER)  # win screen → title
+	await wait(0.3)
+	await press(JOY_BUTTON_A, 0)  # Play
+	await wait(0.3)
+	var join: Node = get_tree().current_scene
+	if not join is JoinScreen:
+		_fail("Play from the title should open the join screen")
+		return
+	await join_side("joypad:0", JoinScreen.LEFT)
+	await press(JOY_BUTTON_A, 0)  # play solo
+	await press(JOY_BUTTON_DPAD_RIGHT, 0)
+	var dpad_ok: bool = PlayerDevices.cpu_difficulty == "hard" and _cpu_card(join).contains("<Hard>")
+	await move_stick(0, 1.0)
+	var stick_ok: bool = PlayerDevices.cpu_difficulty == "easy"
+	await move_stick(0, -1.0)
+	check(dpad_ok and stick_ok and PlayerDevices.cpu_difficulty == "hard",
+		"a controller's D-pad and stick cycle the difficulty too")
+	await press(JOY_BUTTON_A, 0)
+	await wait(JoinScreen.COUNTDOWN + 0.3)
+	var p2 := find_player(2)
+	var brain: CpuBrain = p2.get_node_or_null("CpuBrain") if p2 != null else null
+	check(brain != null and brain.profile == CpuBrain.PROFILES["hard"],
+		"picking Hard on the join screen gives the CPU's brain the hard profile")
+
+	await wait(3.5)  # grace period
+	await press(JOY_BUTTON_START, 0)
+	await press(JOY_BUTTON_DPAD_DOWN, 0)
+	await press(JOY_BUTTON_DPAD_DOWN, 0)
+	await press(JOY_BUTTON_A, 0)  # Quit to Menu
+	await wait(0.3)
+	await press(JOY_BUTTON_A, 0)  # Play
+	await wait(0.3)
+	join = get_tree().current_scene
+	if not join is JoinScreen:
+		_fail("Quit to Menu then Play should open the join screen")
+		return
+	await join_side("joypad:0", JoinScreen.LEFT)
+	await press(JOY_BUTTON_A, 0)
+	check(_cpu_card(join).contains("Difficulty: <Hard>"), "the difficulty is kept for the next solo match")
+	PlayerDevices.cpu_difficulty = "medium"
 
 # ── CPU opponent in the dungeon (#33) ─────────────────────────────────────────
 
@@ -828,8 +915,10 @@ func _test_cpu_final_battle(dungeon_stats: PlayerStats) -> void:
 	var lines := _balance_log_lines()
 	var record = JSON.parse_string(lines[0]) if lines.size() == 1 else null
 	check(record is Dictionary and record.get("winner") == 2.0
-		and record.get("p2", {}).get("device") == "cpu",
-		"the balance log records the CPU's win with device 'cpu'")
+		and record.get("p2", {}).get("device") == "cpu"
+		and record.get("p2", {}).get("difficulty") == "medium"
+		and not record.get("p1", {}).has("difficulty"),
+		"the balance log records the CPU's win with device 'cpu' and its difficulty")
 	check(record is Dictionary and not record.get("p2", {}).get("picks", []).is_empty(),
 		"the balance log has the CPU's dungeon picks")
 
