@@ -17,8 +17,17 @@ class_name CpuProfile
 @export_range(0.0, 1.0) var shield_skill: float = 0.4
 ## A bullet that will pass closer than this (px) counts as a threat.
 @export var dodge_radius: float = 14.0
+## Chance (per incoming bullet) that it reacts at all, by dodging or shielding.
+@export_range(0.0, 1.0) var dodge_skill: float = 0.75
+## How fast (radians per second) its movement direction can turn, so a
+## reversal is an arc instead of a snap. 0 = instant (inhumanly twitchy).
+@export var turn_rate: float = 7.0
+## Seconds it hesitates (±25%) before reacting to a new room's enemies or to
+## upgrades appearing. 0 = reacts on the first frame.
+@export var notice_time: float = 0.8
 ## Distance (px) the CPU tries to keep from its target.
 @export var preferred_range: float = 80.0
-## Upgrade id → how much the CPU wants it. Empty = all equal. Used once the
-## CPU plays the dungeon (#33).
+## Upgrade id (Upgrade.pick_id(), e.g. "attack_rate") → how much the CPU
+## wants it after a room clear. Missing ids weigh 1.0, so empty = all equal.
+## A bullet upgrade (offered after a boss) always wins regardless.
 @export var upgrade_weights: Dictionary = {}

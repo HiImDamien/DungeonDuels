@@ -48,6 +48,8 @@ Phases run in order. Within a phase, the order below follows the dependencies.
 | #40 | Reflect shield (+ shield-mode framework) | M | #29 |
 | #41 | Absorb shield | M | #40 |
 | #42 | Boomerang and pierce bullet modes | M | — |
+| #55 | Slime contact damage and a shield bash | M | #29 |
+| #58 | Shield parry window and center sweet spot | M | #29 |
 
 ### 5. More to fight
 | # | Issue | Size | Depends on |

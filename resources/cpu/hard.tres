@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="CpuProfile" format=3]
+
+[ext_resource type="Script" path="res://scripts/player/cpu/cpu_profile.gd" id="1_cpu"]
+
+[resource]
+script = ExtResource("1_cpu")
+decision_interval = 0.25
+reaction_time = 0.3
+aim_error_deg = 12.0
+lead_accuracy = 0.5
+shield_skill = 0.4
+dodge_radius = 14.0
+dodge_skill = 1.0
+turn_rate = 0.0
+notice_time = 0.0
+preferred_range = 80.0

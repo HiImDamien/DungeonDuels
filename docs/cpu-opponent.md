@@ -1,7 +1,7 @@
 # CPU opponent design
 
-Status: design agreed Nov 18 2026. #31 (PlayerInput) and #32 (duel, Medium only) are built;
-#33 (dungeon) and #34 (difficulty), then #48 (navigation, once rooms have walls).
+Status: design agreed Nov 18 2026. #31 (PlayerInput), #32 (duel, Medium only) and #33 (dungeon) are
+built; next #34 (difficulty), then #48 (navigation, once rooms have walls).
 Decision: the CPU drives a normal `Player` through a **controller abstraction**. It does not
 fake input through the InputMap.
 
@@ -70,9 +70,13 @@ func is_shielding() -> bool
   countdown instead of getting a head start, and while it has no living opponent.
 - `reaction_time` means a bullet must have been on screen that long before the CPU notices it.
   It then checks whether the bullet's path passes within `dodge_radius` in the next 0.6 s
-  (`THREAT_LOOKAHEAD`), and rolls `shield_skill` once per bullet to pick shield or sidestep.
-- Threats are checked every frame (a handful of bullets, so it's cheap). Only strafe direction
-  and aim error wait for the next decision.
+  (`THREAT_LOOKAHEAD`). Each bullet gets one `dodge_skill` roll (react at all?) and one
+  `shield_skill` roll (shield or sidestep). A sidestep is held for 0.25 s (`DODGE_COMMIT`).
+- Threats are checked every frame (a handful of bullets, so it's cheap). Strafe direction, aim
+  error and which enemy to fight wait for the next decision.
+- **Human-looking movement** (#33 playtest: the first version snapped back and forth and reacted
+  on the first frame). Its move direction turns at most `turn_rate` rad/s, so reversals are
+  arcs. A new room's enemies, or upgrades appearing, start a `notice_time` (±25%) hesitation.
 - It uses its own `RandomNumberGenerator`. `seed` is exported so the smoke test is deterministic.
 
 ### Perception: stay inside your own world
@@ -92,12 +96,15 @@ Split screen has **two worlds in one SceneTree**, so group lookups return nodes 
 ### Behaviors
 
 All behaviors write a desired `move`/`aim`/`shoot`/`shield`. Dodge can override movement.
+The brain tells the two phases apart by what it sees: an opponent in its own world means the
+final battle, otherwise it's in the dungeon. The same brain follows the player from room to room,
+because `RoomManager` re-parents the player rather than respawning it.
 
 | Situation | Behavior |
 |---|---|
 | A bullet will pass within `dodge_radius` in the next `reaction_time` seconds | **Dodge**: move perpendicular to the bullet's path, away from walls. If `shield_skill` passes and the shield isn't broken, **shield** toward it instead (then no shooting). |
-| Dungeon, enemies alive | **Fight**: aim at the nearest (or most dangerous) enemy with `aim_error`, kite at `preferred_range`, shoot. |
-| Dungeon, room cleared, upgrades offered | **Collect**: score the offered upgrades with `upgrade_weights` and walk to the best one. |
+| Dungeon, enemies alive | **Fight**: aim at the nearest enemy chasing it (lead and `aim_error` as in the duel), kite at `preferred_range` with the duel's strafe, shoot. |
+| Dungeon, room cleared, upgrades offered | **Collect**: score the offered upgrades with `upgrade_weights` (missing ids weigh 1, plus a little random jitter; a `BulletUpgrade` always wins) and walk straight to the best one, without wall sliding. |
 | Final battle | **Duel**: strafe around the opponent at `preferred_range`, lead the shot (`lead_accuracy` × predicted position), shoot, react to bullets as above. |
 
 Pathing: rooms are open today, so steering is direct seek plus a wall-avoidance raycast.
@@ -114,10 +121,15 @@ and it slots into the steering step without changing the rest.
 | `lead_accuracy` (0–1) | 0.0 | 0.5 | 0.9 |
 | `shield_skill` (chance to shield a threat) | 0.1 | 0.4 | 0.8 |
 | `dodge_radius` (px) | 8 | 14 | 20 |
+| `dodge_skill` (chance to react to a bullet) | ? | 0.75 | 1.0 |
+| `turn_rate` (rad/s, 0 = instant) | ? | 7 | 0 |
+| `notice_time` (s) | ? | 0.8 | 0 |
 | `preferred_range` (px) | 60 | 80 | 100 |
 | `upgrade_weights` | random | balanced | best-for-duel |
 
-These are starting numbers, tuned in the difficulty issue. Difficulty only changes these
+These are starting numbers, tuned in the difficulty issue. Today only `medium.tres` and
+`hard.tres` exist, and `hard.tres` is Medium's numbers with #33's first, instant reflexes
+(`dodge_skill` 1, `turn_rate` 0, `notice_time` 0); #34 fills in the rest of the Hard column. Difficulty only changes these
 parameters. Easy never gets different code paths, and Hard never gets extra stats.
 
 ## Testing
