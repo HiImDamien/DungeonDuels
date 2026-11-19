@@ -1,7 +1,7 @@
 # CPU opponent design
 
-Status: design agreed Nov 18 2026. #31 (PlayerInput), #32 (duel, Medium only) and #33 (dungeon) are
-built; next #34 (difficulty), then #48 (navigation, once rooms have walls).
+Status: design agreed Nov 18 2026. #31 (PlayerInput), #32 (duel), #33 (dungeon) and #34 (difficulty)
+are built; next #48 (navigation, once rooms have walls).
 Decision: the CPU drives a normal `Player` through a **controller abstraction**. It does not
 fake input through the InputMap.
 
@@ -121,25 +121,30 @@ and it slots into the steering step without changing the rest.
 | `lead_accuracy` (0–1) | 0.0 | 0.5 | 0.9 |
 | `shield_skill` (chance to shield a threat) | 0.1 | 0.4 | 0.8 |
 | `dodge_radius` (px) | 8 | 14 | 20 |
-| `dodge_skill` (chance to react to a bullet) | ? | 0.75 | 1.0 |
-| `turn_rate` (rad/s, 0 = instant) | ? | 7 | 0 |
-| `notice_time` (s) | ? | 0.8 | 0 |
+| `dodge_skill` (chance to react to a bullet) | 0.4 | 0.75 | 1.0 |
+| `turn_rate` (rad/s, 0 = instant) | 4 | 7 | 0 |
+| `notice_time` (s) | 1.5 | 0.8 | 0 |
 | `preferred_range` (px) | 60 | 80 | 100 |
-| `upgrade_weights` | random | balanced | best-for-duel |
+| `upgrade_weights` | none (random) | none (random) | `attack_rate` 3, `health_max` 2.5, `shield_max` 1.5, `shield_regen` 1.5, `speed_boost` 1 |
 
-These are starting numbers, tuned in the difficulty issue. Today only `medium.tres` and
-`hard.tres` exist, and `hard.tres` is Medium's numbers with #33's first, instant reflexes
-(`dodge_skill` 1, `turn_rate` 0, `notice_time` 0); #34 fills in the rest of the Hard column. Difficulty only changes these
-parameters. Easy never gets different code paths, and Hard never gets extra stats.
+Tuned in #34. Difficulty only changes these numbers. Easy never gets different code paths, and
+Hard never gets extra stats. A bullet upgrade beats every stat upgrade at every level. Hard keeps
+#33's first, instant reflexes (`turn_rate` 0, `notice_time` 0), which a playtest found too sharp
+for Medium.
+
+The solo player picks the difficulty on the join screen (`PlayerDevices.cpu_difficulty`, Medium
+by default). CPU vs CPU runs set `PlayerDevices.cpu_difficulty_override` per side instead; see
+[balance.md](balance.md#cpu-vs-cpu).
 
 ## Testing
 
 - Smoke test: a solo section where P2 is `"cpu"`. Check that P2 has a `CpuBrain`, that it moves
   and fires within a few seconds of grace ending, and that it clears at least one dungeon room.
   Hard CPU against an idle P1 in the final battle must produce a winner within N seconds.
-- **CPU vs CPU** (`PlayerDevices.assign(CPU, CPU)`, debug only): plays full matches headless.
-  Combined with the balance log (milestone 2), it lets us compare upgrades over many matches
-  without a second human.
+- **CPU vs CPU** (`tests/cpu_vs_cpu.gd`, debug only): plays full matches headless and logs
+  them with each side's difficulty to `user://balance_log_cpu.jsonl`, so upgrades and difficulties
+  can be compared over many matches without a second human. Command in
+  [balance.md](balance.md#cpu-vs-cpu).
 
 ## Out of scope for now
 
