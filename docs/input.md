@@ -31,7 +31,10 @@ The join screen is event-driven and never lists connected joypads at startup, be
 only report a gamepad after one of its buttons is pressed.
 
 **Solo play:** when exactly one device has joined, picked a side and readied up, pressing A /
-Enter again sets `JoinScreen.solo` and starts the countdown. `assign()` then gets
+Enter again sets `JoinScreen.solo`, and the CPU's card asks for a difficulty: Left / Right (keys,
+D-pad or stick, from the solo player's device) cycles Easy / Medium / Hard in
+`PlayerDevices.cpu_difficulty`, which survives scene changes, so a rematch keeps it. A / Enter
+once more sets `difficulty_chosen` and starts the countdown; B goes back to picking. `assign()` then gets
 `PlayerDevices.CPU` (`"cpu"`) for the empty side, which erases that player's actions and adds
 none, so no device can steer or pause for them. `CpuBrain.attach_if_cpu()` gives them a brain in
 the dungeon and in the final battle. See `docs/cpu-opponent.md`.

@@ -11,6 +11,10 @@ class_name CpuProfile
 @export var reaction_time: float = 0.3
 ## Each decision picks an aim offset in ±this many degrees.
 @export var aim_error_deg: float = 12.0
+## How fast (radians per second) its aim swings toward the target, so it
+## lands on a target that stands still and lags behind one that moves.
+## 0 = snaps onto the target instantly.
+@export var aim_track_rate: float = 0.0
 ## 0 = shoot at where the opponent is, 1 = fully lead to where they'll be.
 @export_range(0.0, 1.0) var lead_accuracy: float = 0.5
 ## Chance (per incoming bullet) to raise the shield instead of sidestepping.
@@ -25,6 +29,13 @@ class_name CpuProfile
 ## Seconds it hesitates (±25%) before reacting to a new room's enemies or to
 ## upgrades appearing. 0 = reacts on the first frame.
 @export var notice_time: float = 0.8
+## Chance per decision to stop and stand while shooting, for plant_time
+## seconds (±25%). It still sidesteps bullets. 0 = always on the move.
+@export_range(0.0, 1.0) var plant_chance: float = 0.0
+@export var plant_time: float = 0.8
+## Chance per decision to hold fire until the next decision, so it shoots in
+## bursts instead of holding the trigger down. 0 = always firing.
+@export_range(0.0, 1.0) var rest_chance: float = 0.0
 ## Distance (px) the CPU tries to keep from its target.
 @export var preferred_range: float = 80.0
 ## Upgrade id (Upgrade.pick_id(), e.g. "attack_rate") → how much the CPU
