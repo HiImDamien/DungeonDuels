@@ -28,9 +28,19 @@ const PREFIXES := {1: "", 2: "p2_"}
 
 ## Player index → device, empty until assign() is called.
 var devices := {}
-## "easy" | "medium" | "hard". Lives here so it survives the scene change.
-## Only "medium" exists until #34.
+## In picker order (the join screen cycles through them).
+const DIFFICULTIES: Array[String] = ["easy", "medium", "hard"]
+
+## The solo CPU's difficulty, picked on the join screen. Lives here so it
+## survives the scene change and is kept for the rematch.
 var cpu_difficulty := "medium"
+## Debug only (CPU vs CPU): player index → difficulty, overriding
+## cpu_difficulty for that player. Empty in normal play.
+var cpu_difficulty_override := {}
+
+## The difficulty the CPU playing `player_index` uses.
+func cpu_difficulty_for(player_index: int) -> String:
+	return cpu_difficulty_override.get(player_index, cpu_difficulty)
 
 # Action → the keyboard / joypad events P1 had in project.godot.
 var _key_templates := {}

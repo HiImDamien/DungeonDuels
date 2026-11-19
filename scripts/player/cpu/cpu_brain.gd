@@ -13,9 +13,10 @@ class_name CpuBrain
 ## fights its own enemies, dodges their bullets and collects upgrades (#33).
 ## Design: docs/cpu-opponent.md.
 
-## "hard" keeps #33's first, inhumanly sharp tuning (instant turns and
-## reactions). Only #34's difficulty picker will select it.
+## Picked on the join screen (PlayerDevices.cpu_difficulty). Difficulty only
+## changes these numbers, never the code below.
 const PROFILES := {
+	"easy": preload("res://resources/cpu/easy.tres"),
 	"medium": preload("res://resources/cpu/medium.tres"),
 	"hard": preload("res://resources/cpu/hard.tres"),
 }
@@ -82,7 +83,8 @@ static func attach_if_cpu(p: player) -> CpuBrain:
 		return null
 	var brain := CpuBrain.new()
 	brain.name = "CpuBrain"
-	brain.profile = PROFILES.get(PlayerDevices.cpu_difficulty, PROFILES[DEFAULT_DIFFICULTY])
+	brain.profile = PROFILES.get(PlayerDevices.cpu_difficulty_for(p.player_index),
+		PROFILES[DEFAULT_DIFFICULTY])
 	p.input = CpuInput.new()
 	p.add_child(brain)
 	return brain

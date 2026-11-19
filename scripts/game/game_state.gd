@@ -92,6 +92,8 @@ func log_match_result(winner: int) -> void:
 			"kills": player_stats[index].kills,
 			"deaths": deaths[index],
 		}
+		if record["p%d" % index].device == PlayerDevices.CPU:
+			record["p%d" % index]["difficulty"] = PlayerDevices.cpu_difficulty_for(index)
 	BalanceLog.append(record)
 
 ## The project's version (Project Settings > Application > Config > Version),

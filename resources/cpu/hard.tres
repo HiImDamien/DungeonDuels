@@ -4,13 +4,20 @@
 
 [resource]
 script = ExtResource("1_cpu")
-decision_interval = 0.25
-reaction_time = 0.3
-aim_error_deg = 12.0
-lead_accuracy = 0.5
-shield_skill = 0.4
-dodge_radius = 14.0
+decision_interval = 0.12
+reaction_time = 0.15
+aim_error_deg = 4.0
+lead_accuracy = 0.9
+shield_skill = 0.8
+dodge_radius = 20.0
 dodge_skill = 1.0
 turn_rate = 0.0
 notice_time = 0.0
-preferred_range = 80.0
+preferred_range = 100.0
+upgrade_weights = {
+"attack_rate": 3.0,
+"health_max": 2.5,
+"shield_max": 1.5,
+"shield_regen": 1.5,
+"speed_boost": 1.0
+}
