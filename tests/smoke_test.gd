@@ -119,6 +119,11 @@ func _test_keyboard_shooting(p: player) -> void:
 func _test_shield(p: player) -> void:
 	var shield := p.shield
 	check(shield.max_health == 4, "the shield starts with 4 heavy points")
+	# A leftover enemy bullet may have downed P1 earlier; let them get back up.
+	var downed := 0.0
+	while p.is_dead and downed < 8.0:
+		await wait(0.2)
+		downed += 0.2
 
 	# Hold the shield through PlayerInput, the way the CPU opponent will.
 	var cpu := CpuInput.new()
@@ -721,9 +726,12 @@ func _test_cpu_dungeon(p1: player, p2: player, brain: CpuBrain) -> void:
 		"the CPU walks onto an upgrade after the clear (picks %s)" % str(GameState.picks[2]))
 	check(GameState.picks[1].is_empty() and rm2.rooms_completed == GameState.rooms_cleared[2],
 		"the CPU's clears and picks are counted for P2 only")
-	# The next room loads with fresh enemies for it to fight.
-	await wait(0.5)
+	# The next room loads with fresh enemies, but it takes a moment to react.
+	var fired_at_pick: float = p2.current_weapon.last_fire_time
+	await wait(0.3)  # the pick was at most 0.25s ago; Medium hesitates ≥ 0.6s
 	check(brain._my_enemies().size() > 0, "after its pick the CPU's next room loads with enemies")
+	check(p2.current_weapon.last_fire_time == fired_at_pick,
+		"the CPU hesitates before fighting a new room instead of firing on the first frame")
 
 # ── CPU opponent in the final battle (#32) ────────────────────────────────────
 
@@ -762,8 +770,12 @@ func _test_cpu_final_battle(dungeon_stats: PlayerStats) -> void:
 		"solo final battle: P2 gets a CpuBrain and P1 stays human")
 	if brain == null:
 		return
-	check(brain.profile != null and is_equal_approx(brain.profile.preferred_range, 80.0),
-		"the CPU uses the Medium profile")
+	check(brain.profile == CpuBrain.PROFILES["medium"], "the CPU uses the Medium profile")
+	var hard: CpuProfile = CpuBrain.PROFILES["hard"]
+	check(brain.profile.turn_rate > 0.0 and brain.profile.notice_time > 0.0
+		and brain.profile.dodge_skill < 1.0
+		and hard.turn_rate == 0.0 and hard.notice_time == 0.0 and hard.dodge_skill == 1.0,
+		"Medium turns, notices and dodges like a human; Hard keeps the instant reflexes")
 	brain.rng_seed = 32
 
 	var start := f2.global_position
@@ -788,8 +800,12 @@ func _test_cpu_final_battle(dungeon_stats: PlayerStats) -> void:
 	await _cpu_frozen_while_paused(f2)
 
 	# P1 shoots straight at the CPU (kept invincible so the duel doesn't end).
+	# Medium ignores some bullets (dodge_skill) and sidesteps others, so allow
+	# up to 16 shots and stop at the first shield.
 	var shielded := false
-	for i in 8:
+	for i in 16:
+		if shielded:
+			break
 		f1.invincible = true
 		f1.current_weapon.fire(f1.global_position.direction_to(f2.global_position))
 		for j in 5:
