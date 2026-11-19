@@ -13,8 +13,11 @@ class_name CpuBrain
 ## fights its own enemies, dodges their bullets and collects upgrades (#33).
 ## Design: docs/cpu-opponent.md.
 
+## "hard" keeps #33's first, inhumanly sharp tuning (instant turns and
+## reactions). Only #34's difficulty picker will select it.
 const PROFILES := {
 	"medium": preload("res://resources/cpu/medium.tres"),
+	"hard": preload("res://resources/cpu/hard.tres"),
 }
 const DEFAULT_DIFFICULTY := "medium"
 
@@ -32,6 +35,9 @@ const RANGE_SOFTNESS := 30.0
 const STRAFE_FLIP_CHANCE := 0.15
 ## After bouncing off a wall, don't flip again for this long (no jitter).
 const WALL_FLIP_COOLDOWN := 0.5
+## Once it picks a sidestep, it keeps that direction this long (no jitter
+## between two bullets).
+const DODGE_COMMIT := 0.25
 ## A bullet upgrade always beats a stat upgrade (they're the big pickups).
 const BULLET_UPGRADE_BONUS := 100.0
 ## Random spread added to upgrade scores, so equal weights don't always pick
@@ -59,6 +65,13 @@ var _shield_dir := Vector2.RIGHT
 var _wall_flip_at := -INF
 ## The upgrade it's walking to, kept until it's picked up or freed.
 var _chosen_upgrade: Upgrade = null
+## The enemy it's fighting; re-picked only at decisions or when it dies.
+var _target_enemy: Node2D = null
+## "fight", "collect" or "wait": a change starts a notice_time hesitation.
+var _situation := "wait"
+var _hesitate_until := -INF
+var _dodge_dir := Vector2.ZERO
+var _dodge_until := -INF
 ## Bullet instance id → {"since": first-seen time, "shield": rolled choice}.
 var _seen := {}
 
@@ -104,9 +117,17 @@ func _physics_process(delta: float) -> void:
 		_idle()
 		return
 	if target == null:
-		target = _nearest_enemy()
+		if not _is_alive_enemy(_target_enemy):
+			_target_enemy = _nearest_enemy()
+		target = _target_enemy
+		if _noticing("fight" if target != null else \
+				("collect" if not _offered_upgrades().is_empty() else "wait")):
+			_steer_to(Vector2.ZERO, delta)
+			_input.shoot = false
+			_input.shield = false
+			return
 	if target == null:
-		_collect()
+		_collect(delta)
 		return
 
 	var to_target := target.global_position - _player.global_position
@@ -114,18 +135,22 @@ func _physics_process(delta: float) -> void:
 	var aim := _lead_aim(target).rotated(_aim_offset)
 
 	var threat := _most_urgent_threat()
-	if threat != null:
+	if _clock < _dodge_until:
+		move = _dodge_dir
+	elif threat != null:
 		if _seen[threat.get_instance_id()].shield and _shield_usable():
 			_shield_dir = -threat.direction
 			_shield_until = _clock + SHIELD_LINGER
 		else:
-			move = _dodge(threat)
+			_dodge_dir = _dodge(threat)
+			_dodge_until = _clock + DODGE_COMMIT
+			move = _dodge_dir
 
 	var shielding := _clock < _shield_until and _shield_usable()
 	if shielding:
 		aim = _shield_dir  # the shield faces the aim direction
 
-	_input.move = _avoid_walls(move)
+	_steer_to(_avoid_walls(move), delta)
 	_input.aim = aim
 	_input.shield = shielding
 	_input.shoot = not shielding
@@ -138,18 +163,41 @@ func _idle() -> void:
 ## Room cleared: walk straight to the best offered upgrade, or wait for the
 ## next room. No wall sliding here: pickups sit close to the walls and the
 ## rooms are open, so move_and_slide is enough.
-func _collect() -> void:
-	_idle()
+func _collect(delta: float) -> void:
+	_input.shoot = false
+	_input.shield = false
 	if not is_instance_valid(_chosen_upgrade) or _chosen_upgrade.is_queued_for_deletion():
 		_chosen_upgrade = _best_upgrade()
 	if _chosen_upgrade == null:
+		_steer_to(Vector2.ZERO, delta)
 		return
 	var to_upgrade := _chosen_upgrade.global_position - _player.global_position
 	if to_upgrade.length() > 0.5:
-		_input.move = to_upgrade.normalized()
-		_input.aim = _input.move
+		_steer_to(to_upgrade.normalized(), delta)
+		_input.aim = to_upgrade.normalized()
+
+## True while it's still "noticing" a new situation (a room's enemies, or
+## upgrades appearing): a human needs a moment to see them and react.
+func _noticing(situation: String) -> bool:
+	if situation != _situation:
+		_situation = situation
+		if situation != "wait":
+			_hesitate_until = _clock + profile.notice_time * _rng.randf_range(0.75, 1.25)
+	return _clock < _hesitate_until
+
+## Writes `desired` to the stick, turning at most profile.turn_rate rad/s from
+## the current direction. Starting and stopping stay instant, like a human's.
+func _steer_to(desired: Vector2, delta: float) -> void:
+	var current := _input.move
+	if profile.turn_rate <= 0.0 or desired == Vector2.ZERO or current == Vector2.ZERO:
+		_input.move = desired
+		return
+	var max_turn := profile.turn_rate * delta
+	var angle := clampf(current.angle_to(desired), -max_turn, max_turn)
+	_input.move = current.normalized().rotated(angle) * desired.length()
 
 func _decide() -> void:
+	_target_enemy = null  # re-pick the nearest enemy (commit until then)
 	_aim_offset = deg_to_rad(_rng.randf_range(-profile.aim_error_deg, profile.aim_error_deg))
 	if _rng.randf() < STRAFE_FLIP_CHANCE:
 		_strafe_sign = -_strafe_sign
@@ -173,6 +221,10 @@ func _my_enemies() -> Array[Node2D]:
 		if e.get("target") == _player and _same_world(e) and not e.is_queued_for_deletion():
 			mine.append(e)
 	return mine
+
+## Untyped on purpose: a freed node can't be passed as a Node2D argument.
+func _is_alive_enemy(e) -> bool:
+	return is_instance_valid(e) and not e.is_queued_for_deletion()
 
 func _nearest_enemy() -> Node2D:
 	var best: Node2D = null
@@ -217,7 +269,8 @@ func _best_upgrade() -> Upgrade:
 	return best
 
 ## The incoming bullet that will reach us soonest, counting only bullets seen
-## for at least reaction_time. Each bullet gets one shield-or-dodge roll.
+## for at least reaction_time. Each bullet gets one roll for whether it
+## reacts at all (dodge_skill) and one for shield-or-dodge (shield_skill).
 func _most_urgent_threat() -> Area2D:
 	var alive := {}
 	var best: Area2D = null
@@ -228,8 +281,9 @@ func _most_urgent_threat() -> Area2D:
 		var id := b.get_instance_id()
 		alive[id] = true
 		if not _seen.has(id):
-			_seen[id] = {"since": _clock, "shield": _rng.randf() < profile.shield_skill}
-		if _clock - _seen[id].since < profile.reaction_time:
+			_seen[id] = {"since": _clock, "react": _rng.randf() < profile.dodge_skill,
+				"shield": _rng.randf() < profile.shield_skill}
+		if not _seen[id].react or _clock - _seen[id].since < profile.reaction_time:
 			continue
 		var velocity: Vector2 = b.direction * b.speed
 		var rel := _player.global_position - b.global_position
