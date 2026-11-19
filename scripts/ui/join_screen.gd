@@ -6,9 +6,11 @@ extends Control
 ## A readies up, B un-readies / steps back / leaves. Once both players are
 ## ready a countdown runs, and backing out cancels it.
 ##
-## Solo play: a single ready player can press A / Enter again to start alone.
+## Solo play: a single ready player can press A / Enter again to play alone.
 ## The empty side becomes the CPU (PlayerDevices.CPU): no device can steer it,
-## and it fights back in the final battle. In the dungeon it stands idle (#33).
+## and it plays its own dungeon and the final battle. Its card then asks for a
+## difficulty (Left / Right cycles Easy / Medium / Hard, stored in
+## PlayerDevices.cpu_difficulty) and A / Enter once more starts the countdown.
 ##
 ## Joining is driven purely by input events, never by a list of connected
 ## controllers: browsers don't report a gamepad until a button on it is pressed.
@@ -29,6 +31,8 @@ const P1_COLOR := Color(0.38, 0.57, 1.0)   # matches the HUD's P1
 const P2_COLOR := Color(1.0, 0.29, 0.23)   # matches the HUD's P2
 const GOLD := Color(1.0, 0.85, 0.2)
 const GRAY := Color(0.7, 0.7, 0.75)
+## Wide enough for "Difficulty: <Medium>" on the CPU's card.
+const CARD_WIDTH := 128.0
 
 ## One entry per joined device: {device: String, side: int, ready: bool}.
 var tokens: Array[Dictionary] = []
@@ -36,7 +40,14 @@ var tokens: Array[Dictionary] = []
 var countdown_left := -1.0
 ## True once a lone ready player has asked to play solo. Cleared by backing
 ## out or by a second device joining.
-var solo := false
+var solo := false:
+	set(value):
+		solo = value
+		if not value:
+			difficulty_chosen = false
+## Solo only: true once the player confirmed the CPU's difficulty. Only then
+## does the countdown run. Back returns to picking.
+var difficulty_chosen := false
 ## Whether to suggest pressing again / restarting the browser when no
 ## controller shows up. Web only: browsers can lose track of a controller
 ## (seen with Chrome on macOS) until they're restarted. Tests can turn it on.
@@ -62,8 +73,8 @@ func _ready() -> void:
 	add_child(bg)
 
 	_label("CHOOSE YOUR SIDE", ControlsScreen.FONT_BOLD, 16, Color.WHITE, Vector2(0, 6), Vector2(365, 20))
-	_side_labels[LEFT] = _side_box("P1 - LEFT SIDE", P1_COLOR, 10)
-	_side_labels[RIGHT] = _side_box("P2 - RIGHT SIDE", P2_COLOR, 235)
+	_side_labels[LEFT] = _side_box("P1 - LEFT SIDE", P1_COLOR, 6)
+	_side_labels[RIGHT] = _side_box("P2 - RIGHT SIDE", P2_COLOR, 231)
 	_middle_label = _label("", ControlsScreen.FONT, 8, Color.WHITE, Vector2(130, 60), Vector2(105, 60))
 	_label("Any button: join      Left / Right: pick side", ControlsScreen.FONT, 8, GRAY, Vector2(0, 150), Vector2(365, 10))
 	_label("A / Enter: ready      B / Backspace: back", ControlsScreen.FONT, 8, GRAY, Vector2(0, 162), Vector2(365, 10))
@@ -94,7 +105,7 @@ func _process(delta: float) -> void:
 ## Both players are on different sides and ready, or one ready player chose solo.
 func all_ready() -> bool:
 	if solo:
-		return can_play_solo()
+		return can_play_solo() and difficulty_chosen
 	return tokens.size() == MAX_PLAYERS and tokens.all(func(t): return t.ready and t.side != MIDDLE)
 
 ## Exactly one device has joined, picked a side and readied up.
@@ -142,17 +153,33 @@ func _unhandled_input(event: InputEvent) -> void:
 		else:
 			show_message("Two players have already joined")
 	elif _is_left(event):
-		move(token, LEFT)
+		_step(token, LEFT)
 	elif _is_right(event):
-		move(token, RIGHT)
+		_step(token, RIGHT)
 	elif _is_confirm(event):
-		if token.ready and can_play_solo():
+		if solo:
+			difficulty_chosen = true
+		elif token.ready and can_play_solo():
 			solo = true
 		elif token.side != MIDDLE:
 			token.ready = true
 	elif _is_back(event):
 		back(token)
 	_refresh()
+
+## Left / Right: picks the CPU's difficulty while solo is waiting for one,
+## otherwise moves the token.
+func _step(token: Dictionary, direction: int) -> void:
+	if solo and not difficulty_chosen:
+		cycle_difficulty(direction)
+	else:
+		move(token, direction)
+
+## Moves the solo CPU's difficulty one step, wrapping around.
+func cycle_difficulty(direction: int) -> void:
+	var options := PlayerDevices.DIFFICULTIES
+	var i := maxi(options.find(PlayerDevices.cpu_difficulty), 0)
+	PlayerDevices.cpu_difficulty = options[posmod(i + direction, options.size())]
 
 ## Steps a token one place left or right (left side / middle / right side).
 func move(token: Dictionary, direction: int) -> void:
@@ -164,8 +191,12 @@ func move(token: Dictionary, direction: int) -> void:
 		return
 	token.side = target
 
-## B: un-ready, else step back to the middle, else leave.
+## B: back from the countdown to the difficulty, else un-ready (which also
+## cancels solo), else step back to the middle, else leave.
 func back(token: Dictionary) -> void:
+	if solo and difficulty_chosen:
+		difficulty_chosen = false
+		return
 	solo = false
 	if token.ready:
 		token.ready = false
@@ -185,7 +216,7 @@ func _handle_stick(event: InputEventJoypadMotion, device: String) -> void:
 		_stick_held[device] = false
 	elif absf(event.axis_value) >= STICK_THRESHOLD and not held:
 		_stick_held[device] = true
-		move(token, RIGHT if event.axis_value > 0 else LEFT)
+		_step(token, RIGHT if event.axis_value > 0 else LEFT)
 		_refresh()
 
 static func _is_press(event: InputEvent) -> bool:
@@ -250,8 +281,11 @@ func _refresh() -> void:
 	for side in _side_labels:
 		var device := device_on(side)
 		var label: Label = _side_labels[side]
-		if device == "" and solo:
-			label.text = "\nCPU\n\nSOLO PLAY"
+		if device == "" and solo and difficulty_chosen:
+			label.text = "\nCPU\n\n%s\nSOLO PLAY" % difficulty_text()
+		elif device == "" and solo:
+			label.text = "\nCPU\n\nDifficulty: <%s>\nLeft / Right: change\nA / Enter: start" \
+				% PlayerDevices.cpu_difficulty.capitalize()
 		elif device == "" and can_play_solo():
 			label.text = "\n(empty)\n\nA / Enter again:\nplay solo vs CPU"
 		elif device == "":
@@ -266,6 +300,10 @@ func _refresh() -> void:
 			waiting.append("< %s >" % PlayerDevices.device_name(token.device))
 	_middle_label.text = "\n".join(waiting)
 
+## "Difficulty: Medium". Plain ASCII: web builds can't reach symbol fonts.
+static func difficulty_text() -> String:
+	return "Difficulty: %s" % PlayerDevices.cpu_difficulty.capitalize()
+
 func _side_box(title: String, color: Color, x: float) -> Label:
 	var box := Panel.new()
 	var style := StyleBoxFlat.new()
@@ -274,10 +312,10 @@ func _side_box(title: String, color: Color, x: float) -> Label:
 	style.set_border_width_all(1)
 	box.add_theme_stylebox_override("panel", style)
 	box.position = Vector2(x, 32)
-	box.size = Vector2(120, 88)
+	box.size = Vector2(CARD_WIDTH, 88)
 	add_child(box)
-	_label(title, ControlsScreen.FONT_BOLD, 8, color, Vector2(0, 6), Vector2(120, 10), box)
-	return _label("", ControlsScreen.FONT, 8, Color.WHITE, Vector2(0, 18), Vector2(120, 60), box)
+	_label(title, ControlsScreen.FONT_BOLD, 8, color, Vector2(0, 6), Vector2(CARD_WIDTH, 10), box)
+	return _label("", ControlsScreen.FONT, 8, Color.WHITE, Vector2(0, 18), Vector2(CARD_WIDTH, 60), box)
 
 func _label(text: String, font: Font, font_size: int, color: Color, pos: Vector2,
 		size_: Vector2, parent: Node = self) -> Label:
