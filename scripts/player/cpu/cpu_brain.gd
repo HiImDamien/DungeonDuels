@@ -44,6 +44,10 @@ const BULLET_UPGRADE_BONUS := 100.0
 ## Random spread added to upgrade scores, so equal weights don't always pick
 ## the same one.
 const UPGRADE_JITTER := 0.1
+## A bullet passing closer than this (px) to its body centre would hit: the
+## player's body radius (5) plus the biggest bullet's (4). Only those are worth
+## the shield; near misses are sidestepped so the shield isn't worn down.
+const SHIELD_HIT_RADIUS := 9.0
 
 @export var profile: CpuProfile
 ## 0 = random each match. Anything else makes its choices repeatable (the
@@ -73,6 +77,14 @@ var _situation := "wait"
 var _hesitate_until := -INF
 var _dodge_dir := Vector2.ZERO
 var _dodge_until := -INF
+## Where it's aiming now; turns toward the wanted aim at profile.aim_track_rate.
+var _aim := Vector2.RIGHT
+## Standing still to shoot until this time (profile.plant_chance).
+var _plant_until := -INF
+## Holding fire until the next decision (profile.rest_chance).
+var _resting := false
+## How close the most urgent threat will pass to its body (px).
+var _threat_miss := INF
 ## Bullet instance id → {"since": first-seen time, "shield": rolled choice}.
 var _seen := {}
 
@@ -133,14 +145,15 @@ func _physics_process(delta: float) -> void:
 		return
 
 	var to_target := target.global_position - _player.global_position
-	var move := _strafe(to_target)
-	var aim := _lead_aim(target).rotated(_aim_offset)
+	var move := Vector2.ZERO if _clock < _plant_until else _strafe(to_target)
+	var aim := _track_aim(_lead_aim(target).rotated(_aim_offset), delta)
 
 	var threat := _most_urgent_threat()
 	if _clock < _dodge_until:
 		move = _dodge_dir
 	elif threat != null:
-		if _seen[threat.get_instance_id()].shield and _shield_usable():
+		if _seen[threat.get_instance_id()].shield and _threat_miss <= SHIELD_HIT_RADIUS \
+				and _shield_usable():
 			_shield_dir = -threat.direction
 			_shield_until = _clock + SHIELD_LINGER
 		else:
@@ -150,12 +163,13 @@ func _physics_process(delta: float) -> void:
 
 	var shielding := _clock < _shield_until and _shield_usable()
 	if shielding:
-		aim = _shield_dir  # the shield faces the aim direction
+		aim = _shield_dir  # the shield faces the aim direction (snaps: a block is a reflex)
+		_aim = aim
 
 	_steer_to(_avoid_walls(move), delta)
 	_input.aim = aim
 	_input.shield = shielding
-	_input.shoot = not shielding
+	_input.shoot = not shielding and not _resting
 
 func _idle() -> void:
 	_input.move = Vector2.ZERO
@@ -177,6 +191,7 @@ func _collect(delta: float) -> void:
 	if to_upgrade.length() > 0.5:
 		_steer_to(to_upgrade.normalized(), delta)
 		_input.aim = to_upgrade.normalized()
+		_aim = _input.aim
 
 ## True while it's still "noticing" a new situation (a room's enemies, or
 ## upgrades appearing): a human needs a moment to see them and react.
@@ -198,11 +213,24 @@ func _steer_to(desired: Vector2, delta: float) -> void:
 	var angle := clampf(current.angle_to(desired), -max_turn, max_turn)
 	_input.move = current.normalized().rotated(angle) * desired.length()
 
+## Turns the aim toward `desired` at most profile.aim_track_rate rad/s
+## (0 = instant) and returns it.
+func _track_aim(desired: Vector2, delta: float) -> Vector2:
+	if profile.aim_track_rate <= 0.0:
+		_aim = desired
+	else:
+		var max_turn := profile.aim_track_rate * delta
+		_aim = _aim.rotated(clampf(_aim.angle_to(desired), -max_turn, max_turn))
+	return _aim
+
 func _decide() -> void:
 	_target_enemy = null  # re-pick the nearest enemy (commit until then)
 	_aim_offset = deg_to_rad(_rng.randf_range(-profile.aim_error_deg, profile.aim_error_deg))
 	if _rng.randf() < STRAFE_FLIP_CHANCE:
 		_strafe_sign = -_strafe_sign
+	_resting = _rng.randf() < profile.rest_chance
+	if _clock >= _plant_until and _rng.randf() < profile.plant_chance:
+		_plant_until = _clock + profile.plant_time * _rng.randf_range(0.75, 1.25)
 
 # ── Perception (only this player's world: split screen shares one tree) ──────
 
@@ -274,6 +302,7 @@ func _best_upgrade() -> Upgrade:
 ## for at least reaction_time. Each bullet gets one roll for whether it
 ## reacts at all (dodge_skill) and one for shield-or-dodge (shield_skill).
 func _most_urgent_threat() -> Area2D:
+	_threat_miss = INF
 	var alive := {}
 	var best: Area2D = null
 	var best_time := INF
@@ -288,15 +317,19 @@ func _most_urgent_threat() -> Area2D:
 		if not _seen[id].react or _clock - _seen[id].since < profile.reaction_time:
 			continue
 		var velocity: Vector2 = b.direction * b.speed
-		var rel := _player.global_position - b.global_position
+		if velocity == Vector2.ZERO:
+			continue
+		var rel := _body_center(_player) - b.global_position
 		var t := rel.dot(velocity) / velocity.length_squared()
 		if t < 0.0 or t > THREAT_LOOKAHEAD:
 			continue
-		if (rel - velocity * t).length() > profile.dodge_radius:
+		var miss := (rel - velocity * t).length()
+		if miss > profile.dodge_radius:
 			continue
 		if t < best_time:
 			best_time = t
 			best = b
+			_threat_miss = miss
 	for id in _seen.keys():
 		if not alive.has(id):
 			_seen.erase(id)
@@ -316,19 +349,28 @@ func _strafe(to_target: Vector2) -> Vector2:
 	var push := clampf((distance - profile.preferred_range) / RANGE_SOFTNESS, -1.0, 1.0)
 	return (radial.orthogonal() * _strafe_sign + radial * push * 1.5).normalized()
 
-## Aim where the target will be when the bullet arrives, scaled by skill.
-## Players and enemies are both CharacterBody2D, so both have a velocity.
+## Aim where the target's body will be when the bullet arrives, scaled by
+## skill. Shots leave the bow on the AimPivot (8 px above the feet), so the
+## line runs from there, not from the player's origin. Players and enemies are
+## both CharacterBody2D, so both have a velocity.
 func _lead_aim(target: Node2D) -> Vector2:
-	var to_target := target.global_position - _player.global_position
-	var flight_time := to_target.length() / BULLET_SPEED
+	var from := _player.aim_pivot.global_position
+	var body := _body_center(target)
+	var flight_time := from.distance_to(body) / BULLET_SPEED
 	var velocity: Vector2 = target.get("velocity") if "velocity" in target else Vector2.ZERO
-	var predicted := target.global_position + velocity * flight_time * profile.lead_accuracy
-	return (predicted - _player.global_position).normalized()
+	var predicted := body + velocity * flight_time * profile.lead_accuracy
+	return (predicted - from).normalized()
+
+## Where a character's hitbox is: its CollisionShape2D sits off the origin
+## (players 8 px up, slimes 2 px down, bats 7 px up).
+func _body_center(node: Node2D) -> Vector2:
+	var shape := node.get_node_or_null("CollisionShape2D") as Node2D
+	return shape.global_position if shape else node.global_position
 
 ## Step sideways off the bullet's line, toward whichever side we're already on.
 func _dodge(bullet: Area2D) -> Vector2:
 	var side: Vector2 = bullet.direction.orthogonal()
-	var offset := (_player.global_position - bullet.global_position).dot(side)
+	var offset := (_body_center(_player) - bullet.global_position).dot(side)
 	var side_sign := signf(offset) if absf(offset) > 1.0 else _strafe_sign
 	var move := side * side_sign
 	if _wall_ahead(move) != Vector2.ZERO:
