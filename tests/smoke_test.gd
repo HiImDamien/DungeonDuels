@@ -791,6 +791,16 @@ func _check_cpu_perception(p1: player, p2: player, brain: CpuBrain) -> void:
 	foreign.queue_free()
 	own.queue_free()
 
+	# Shots leave the bow on the AimPivot, 8 px above the feet, so the aim line
+	# must run from there to the target's hitbox. P1 stands still, so even with
+	# lead the line has to pass through P1's body centre.
+	var from: Vector2 = p2.aim_pivot.global_position
+	var body: Vector2 = p1.get_node("CollisionShape2D").global_position
+	var aim := brain._lead_aim(p1)
+	var off_line := absf((body - from).cross(aim))
+	check(p1.velocity == Vector2.ZERO and off_line < 0.5,
+		"the CPU aims from its bow at the target's body (%.2f px off)" % off_line)
+
 func _test_cpu_dungeon(p1: player, p2: player, brain: CpuBrain) -> void:
 	print("Solo dungeon: the CPU plays its own world")
 	_check_cpu_perception(p1, p2, brain)

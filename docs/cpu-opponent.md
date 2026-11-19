@@ -77,6 +77,9 @@ func is_shielding() -> bool
 - **Human-looking movement** (#33 playtest: the first version snapped back and forth and reacted
   on the first frame). Its move direction turns at most `turn_rate` rad/s, so reversals are
   arcs. A new room's enemies, or upgrades appearing, start a `notice_time` (±25%) hesitation.
+- **Aim** runs from the `AimPivot` (where the bow fires, 8 px above the feet) to the target's
+  `CollisionShape2D`, not origin to origin: slimes' hitboxes sit lower than players', so
+  origin-to-origin shots flew over them.
 - It uses its own `RandomNumberGenerator`. `seed` is exported so the smoke test is deterministic.
 
 ### Perception: stay inside your own world
@@ -102,7 +105,7 @@ because `RoomManager` re-parents the player rather than respawning it.
 
 | Situation | Behavior |
 |---|---|
-| A bullet will pass within `dodge_radius` in the next `reaction_time` seconds | **Dodge**: move perpendicular to the bullet's path, away from walls. If `shield_skill` passes and the shield isn't broken, **shield** toward it instead (then no shooting). |
+| A bullet will pass within `dodge_radius` in the next `reaction_time` seconds | **Dodge**: move perpendicular to the bullet's path, away from walls. If the bullet would actually hit (within `SHIELD_HIT_RADIUS` of its body), `shield_skill` passes and the shield isn't broken, **shield** toward it instead (then no shooting). Near misses are always sidestepped, so the shield isn't worn down. |
 | Dungeon, enemies alive | **Fight**: aim at the nearest enemy chasing it (lead and `aim_error` as in the duel), kite at `preferred_range` with the duel's strafe, shoot. |
 | Dungeon, room cleared, upgrades offered | **Collect**: score the offered upgrades with `upgrade_weights` (missing ids weigh 1, plus a little random jitter; a `BulletUpgrade` always wins) and walk straight to the best one, without wall sliding. |
 | Final battle | **Duel**: strafe around the opponent at `preferred_range`, lead the shot (`lead_accuracy` × predicted position), shoot, react to bullets as above. |
@@ -115,22 +118,28 @@ and it slots into the steering step without changing the rest.
 
 | Field | Easy | Medium | Hard |
 |---|---|---|---|
-| `decision_interval` (s) | 0.45 | 0.25 | 0.12 |
-| `reaction_time` (s) | 0.5 | 0.3 | 0.15 |
-| `aim_error_deg` | 25 | 12 | 4 |
-| `lead_accuracy` (0–1) | 0.0 | 0.5 | 0.9 |
-| `shield_skill` (chance to shield a threat) | 0.1 | 0.4 | 0.8 |
-| `dodge_radius` (px) | 8 | 14 | 20 |
+| `decision_interval` (s) | 0.6 | 0.25 | 0.12 |
+| `reaction_time` (s) | 0.5 | 0.3 | 0.1 |
+| `aim_error_deg` | 6 | 12 | 2 |
+| `aim_track_rate` (rad/s, 0 = instant) | 2 | 0 | 0 |
+| `lead_accuracy` (0–1) | 0.0 | 0.5 | 1.0 |
+| `shield_skill` (chance to shield a hit) | 0.1 | 0.4 | 0.95 |
+| `dodge_radius` (px) | 8 | 14 | 24 |
 | `dodge_skill` (chance to react to a bullet) | 0.4 | 0.75 | 1.0 |
 | `turn_rate` (rad/s, 0 = instant) | 4 | 7 | 0 |
 | `notice_time` (s) | 1.5 | 0.8 | 0 |
-| `preferred_range` (px) | 60 | 80 | 100 |
+| `plant_chance` / `plant_time` (s) | 0.5 / 0.8 | 0.15 / 0.6 | 0 |
+| `rest_chance` (hold fire for a decision) | 0.35 | 0 | 0 |
+| `preferred_range` (px) | 90 | 80 | 100 |
 | `upgrade_weights` | none (random) | none (random) | `attack_rate` 3, `health_max` 2.5, `shield_max` 1.5, `shield_regen` 1.5, `speed_boost` 1 |
 
 Tuned in #34. Difficulty only changes these numbers. Easy never gets different code paths, and
 Hard never gets extra stats. A bullet upgrade beats every stat upgrade at every level. Hard keeps
 #33's first, instant reflexes (`turn_rate` 0, `notice_time` 0), which a playtest found too sharp
-for Medium.
+for Medium. The #34 playtest found Easy's big random aim error read as "always misses to one
+side" and its constant motion as busy rather than easy, so Easy now plays *slower*: its aim swings
+onto you (it hits a target standing still, lags a moving one), it stops to shoot, and it fires in
+bursts.
 
 The solo player picks the difficulty on the join screen (`PlayerDevices.cpu_difficulty`, Medium
 by default). CPU vs CPU runs set `PlayerDevices.cpu_difficulty_override` per side instead; see
