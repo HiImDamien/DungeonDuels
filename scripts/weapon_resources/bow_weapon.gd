@@ -40,6 +40,12 @@ func add_bullet_mode(mode: String) -> void:
 func has_bullet_mode(mode: String) -> bool:
 	return mode in bullet_modes
 
+## The mode that adding `mode` would push out, or "" if there's room for it.
+func mode_replaced_by(mode: String) -> String:
+	if mode in bullet_modes or bullet_modes.size() < MAX_BULLET_MODES:
+		return ""
+	return bullet_modes[0]
+
 # ── Fire entry point ──────────────────────────────────────────────────────────
 
 func fire(direction: Vector2) -> void:

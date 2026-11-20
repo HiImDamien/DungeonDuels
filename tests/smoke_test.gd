@@ -801,9 +801,34 @@ func _check_cpu_perception(p1: player, p2: player, brain: CpuBrain) -> void:
 	check(p1.velocity == Vector2.ZERO and off_line < 0.5,
 		"the CPU aims from its bow at the target's body (%.2f px off)" % off_line)
 
+## The bow holds two modes (#35). A third would push out the oldest, so the
+## label says so and the CPU stops treating it as a must-take pickup.
+func _check_full_bow(p2: player, brain: CpuBrain) -> void:
+	var bow = p2.current_weapon
+	var saved_modes: Array[String] = bow.bullet_modes.duplicate()
+	var saved_rng := brain._rng.state  # scoring rolls jitter; keep the run deterministic
+	var big := BulletUpgrade.create("big")
+
+	bow.bullet_modes.assign(["spread"])
+	check(big.description_for(p2) == "Big Bullets" and big.replaced_mode(p2) == "",
+		"with room on the bow, the bullet upgrade label is just its name")
+	check(brain._upgrade_score(big) >= CpuBrain.BULLET_UPGRADE_BONUS,
+		"with room on the bow, the CPU always takes the bullet upgrade")
+
+	bow.bullet_modes.assign(["spread", "bounce"])
+	check(big.description_for(p2) == "Big Bullets\n(replaces Spread Shot)",
+		"with a full bow, the label names the mode it replaces: '%s'" % big.description_for(p2).replace("\n", " "))
+	check(brain._upgrade_score(big) < CpuBrain.BULLET_UPGRADE_BONUS,
+		"with a full bow, the CPU weighs the bullet upgrade like a stat upgrade")
+
+	big.free()
+	bow.bullet_modes.assign(saved_modes)
+	brain._rng.state = saved_rng
+
 func _test_cpu_dungeon(p1: player, p2: player, brain: CpuBrain) -> void:
 	print("Solo dungeon: the CPU plays its own world")
 	_check_cpu_perception(p1, p2, brain)
+	_check_full_bow(p2, brain)
 	var rm2 = room_manager_for(p2)
 	var limit := 30.0
 	var waited := 0.0

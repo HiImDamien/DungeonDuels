@@ -39,7 +39,8 @@ const WALL_FLIP_COOLDOWN := 0.5
 ## Once it picks a sidestep, it keeps that direction this long (no jitter
 ## between two bullets).
 const DODGE_COMMIT := 0.25
-## A bullet upgrade always beats a stat upgrade (they're the big pickups).
+## A bullet upgrade beats a stat upgrade (they're the big pickups), unless it
+## would push out one of the two modes the bow already has.
 const BULLET_UPGRADE_BONUS := 100.0
 ## Random spread added to upgrade scores, so equal weights don't always pick
 ## the same one.
@@ -283,16 +284,21 @@ func _offered_upgrades() -> Array[Upgrade]:
 			found.append(u)
 	return found
 
-## Score = profile.upgrade_weights[pick_id] (default 1) plus a little jitter;
-## a bullet upgrade always wins.
+## Score = profile.upgrade_weights[pick_id] (default 1) plus a little jitter.
+## A bullet upgrade wins while the bow has room for another mode; once it
+## would replace one, it's weighed like a stat upgrade.
+func _upgrade_score(u: Upgrade) -> float:
+	var score: float = profile.upgrade_weights.get(u.pick_id(), 1.0)
+	score += _rng.randf() * UPGRADE_JITTER
+	if u is BulletUpgrade and (u as BulletUpgrade).replaced_mode(_player) == "":
+		score += BULLET_UPGRADE_BONUS
+	return score
+
 func _best_upgrade() -> Upgrade:
 	var best: Upgrade = null
 	var best_score := -INF
 	for u in _offered_upgrades():
-		var score: float = profile.upgrade_weights.get(u.pick_id(), 1.0)
-		score += _rng.randf() * UPGRADE_JITTER
-		if u is BulletUpgrade:
-			score += BULLET_UPGRADE_BONUS
+		var score := _upgrade_score(u)
 		if score > best_score:
 			best_score = score
 			best = u

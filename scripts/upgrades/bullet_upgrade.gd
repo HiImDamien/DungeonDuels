@@ -56,6 +56,20 @@ static func _diamond_texture() -> ImageTexture:
 func is_available(p: CharacterBody2D) -> bool:
 	return bullet_mode in modes_available_for(p)
 
+## The mode that picking this up would push out of the bow (it holds at most
+## two), or "" if nothing is lost.
+func replaced_mode(p: CharacterBody2D) -> String:
+	if not _weapon_supports_modes(p):
+		return ""
+	return p.current_weapon.mode_replaced_by(bullet_mode)
+
+## Label text for player `p`: the mode's name, plus what it would replace.
+func description_for(p: CharacterBody2D) -> String:
+	var replaced := replaced_mode(p)
+	if replaced == "":
+		return MODES[bullet_mode]["name"]
+	return "%s\n(replaces %s)" % [MODES[bullet_mode]["name"], MODES[replaced]["name"]]
+
 func pick_id() -> String:
 	return bullet_mode
 

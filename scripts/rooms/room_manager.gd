@@ -150,7 +150,9 @@ func _spawn_bullet_upgrade() -> void:
 	if modes.is_empty():
 		return
 	var label: Label = current_room_node.get_node("CanvasLayer/Upgrade3_label")
-	_offer_upgrade(BulletUpgrade.create(modes.pick_random()), BULLET_UPGRADE_POSITION, label)
+	var upgrade := BulletUpgrade.create(modes.pick_random())
+	upgrade.description = upgrade.description_for(player_instance)  # "(replaces X)" when the bow is full
+	_offer_upgrade(upgrade, BULLET_UPGRADE_POSITION, label)
 
 func _offer_upgrade(upgrade: Upgrade, pos: Vector2, label: Label) -> void:
 	upgrade.position = pos
