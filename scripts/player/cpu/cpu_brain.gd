@@ -22,8 +22,9 @@ const PROFILES := {
 }
 const DEFAULT_DIFFICULTY := "medium"
 
-## Matches player_bullet.gd's speed; used to lead shots.
+## Matches player_bullet.gd's speed; used to lead shots (see _bullet_speed()).
 const BULLET_SPEED := 200.0
+const PlayerBulletScript := preload("res://scripts/player/player_bullet.gd")
 ## How far ahead (seconds) a bullet's path is checked for a near miss.
 const THREAT_LOOKAHEAD := 0.6
 ## Keep the shield up this long after the last threat, so it doesn't flicker.
@@ -39,7 +40,8 @@ const WALL_FLIP_COOLDOWN := 0.5
 ## Once it picks a sidestep, it keeps that direction this long (no jitter
 ## between two bullets).
 const DODGE_COMMIT := 0.25
-## A bullet upgrade always beats a stat upgrade (they're the big pickups).
+## A bullet upgrade beats a stat upgrade (they're the big pickups), unless it
+## would push out one of the two modes the bow already has.
 const BULLET_UPGRADE_BONUS := 100.0
 ## Random spread added to upgrade scores, so equal weights don't always pick
 ## the same one.
@@ -283,16 +285,21 @@ func _offered_upgrades() -> Array[Upgrade]:
 			found.append(u)
 	return found
 
-## Score = profile.upgrade_weights[pick_id] (default 1) plus a little jitter;
-## a bullet upgrade always wins.
+## Score = profile.upgrade_weights[pick_id] (default 1) plus a little jitter.
+## A bullet upgrade wins while the bow has room for another mode; once it
+## would replace one, it's weighed like a stat upgrade.
+func _upgrade_score(u: Upgrade) -> float:
+	var score: float = profile.upgrade_weights.get(u.pick_id(), 1.0)
+	score += _rng.randf() * UPGRADE_JITTER
+	if u is BulletUpgrade and (u as BulletUpgrade).replaced_mode(_player) == "":
+		score += BULLET_UPGRADE_BONUS
+	return score
+
 func _best_upgrade() -> Upgrade:
 	var best: Upgrade = null
 	var best_score := -INF
 	for u in _offered_upgrades():
-		var score: float = profile.upgrade_weights.get(u.pick_id(), 1.0)
-		score += _rng.randf() * UPGRADE_JITTER
-		if u is BulletUpgrade:
-			score += BULLET_UPGRADE_BONUS
+		var score := _upgrade_score(u)
 		if score > best_score:
 			best_score = score
 			best = u
@@ -356,10 +363,17 @@ func _strafe(to_target: Vector2) -> Vector2:
 func _lead_aim(target: Node2D) -> Vector2:
 	var from := _player.aim_pivot.global_position
 	var body := _body_center(target)
-	var flight_time := from.distance_to(body) / BULLET_SPEED
+	var flight_time := from.distance_to(body) / _bullet_speed()
 	var velocity: Vector2 = target.get("velocity") if "velocity" in target else Vector2.ZERO
 	var predicted := body + velocity * flight_time * profile.lead_accuracy
 	return (predicted - from).normalized()
+
+## How fast our own shots fly: bounce makes them faster (#35).
+func _bullet_speed() -> float:
+	var bow = _player.current_weapon
+	if bow != null and bow.has_method("has_bullet_mode") and bow.has_bullet_mode("bounce"):
+		return BULLET_SPEED * PlayerBulletScript.BOUNCE_SPEED_MULTIPLIER
+	return BULLET_SPEED
 
 ## Where a character's hitbox is: its CollisionShape2D sits off the origin
 ## (players 8 px up, slimes 2 px down, bats 7 px up).

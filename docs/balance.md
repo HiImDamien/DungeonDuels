@@ -51,6 +51,19 @@ To log a new field, add it in `log_match_result` and update the table above.
 
 ## Summarizing it
 
+`tests/balance_summary.sh` prints, for every upgrade and bullet mode, how many players took it
+and their win rate, plus win rates for stacking a stat upgrade 2+ times:
+
+```bash
+tests/balance_summary.sh                     # the CPU vs CPU log
+tests/balance_summary.sh path/to/log.jsonl   # any log (several files are merged)
+```
+
+A player counts once per match, so 20 matches = 40 players. A win rate from fewer than about 10
+players is mostly noise.
+
+One-off `jq` queries:
+
 ```bash
 cd ~/Library/Application\ Support/Godot/app_userdata/DungeonDuels
 ```
@@ -88,3 +101,54 @@ GODOT=/Applications/Godot.app/Contents/MacOS/Godot
   `weapon.gd` times its fire rate with the wall clock, so the CPUs would barely shoot.
 - A final battle with no winner after 120 s is skipped and not logged.
 - It sets `PlayerDevices.cpu_difficulty_override` for each side; normal play leaves that empty.
+- To collect data faster, run several runners at once, each with its own `--log`, and pass all
+  the files to `tests/balance_summary.sh`. Four at once worked fine on a MacBook.
+- **For upgrade balance, use Medium vs Medium.** Medium has no `upgrade_weights`, so each CPU
+  takes one of the two offered stat upgrades at random, and the bullet mode is random too (the
+  room offers one; the CPU always takes it while the bow has room, and once the bow holds two
+  modes it weighs it like a stat upgrade). With equal skill on both sides, the upgrades are what
+  differs between winner and loser.
+- **Caveat:** Medium only shields 40% of the time (`shield_skill = 0.4`), so CPU data undervalues
+  the shield upgrades and overvalues extra hearts. Check those against human matches.
+
+## Balance pass, Nov 20 2026 (#35)
+
+Three batches of 60 Medium vs Medium matches (120 players each). Win rate of the players who
+took each pick at least once; ±6 points of noise for stat upgrades, ±10 for bullet modes.
+
+| Pick | Before | After tuning | Final (4 hearts) |
+|---|---|---|---|
+| health_max | **75%** (x2: 90%) | **71%** | **69%** |
+| attack_rate | 46% | 51% | 59% |
+| shield_max | 42% | 51% | 40% |
+| shield_regen | 47% | 51% | 42% |
+| speed_boost | 50% | 48% | 47% |
+| spread | **69%** | 58% | 59% |
+| bounce | **35%** | 53% | 52% |
+| big | 53% | 63% | 66% |
+| tracking | 52% | 42% | 50% |
+| cardinal | 57% | 45% | 39% |
+| burst | 41% | 61% | 39% |
+
+Changes:
+- **health_max: one pickup only** (cap 5 → 4, then start 3 → 4 hearts with cap 5). Two pickups
+  won 90%. A duel hit always costs 1 heart, so going from 3 to 5 meant surviving 67% more hits.
+- **Players start with 4 hearts** (was 3), so the one pickup is +25% hits instead of +33%. It
+  barely moved the win rate (71% → 69%) and duels got about 3 s longer (74.5 s → 77.9 s average).
+- **spread: outer bullets at ±22°** (was ±15°). The narrow fan covered Medium's 12° aim error;
+  now a sloppy aim can fall between the bullets at duel range.
+- **bounce: bullets fly 25% faster** (200 → 250). The open duel arena rarely gives a bounce. The
+  CPU leads its shots for the faster speed.
+- **Hard weighs shield_max and shield_regen at 2** (was 1.5), after the #34 playtest found them
+  very noticeable.
+- **Full bow:** the bow holds two modes. The bullet upgrade label now says what a third would
+  replace ("Big Bullets (replaces Spread Shot)"), and the CPU stops treating it as a must-take.
+
+Known exception: **health_max stays at ~69%**, above the ~65% target. In an even hit-trading duel
+one extra heart decides most close fights whatever the starting number. It's accepted for now
+and left to human playtests, where players shield far more than Medium does. If it still feels
+dominant, the next idea is a cost (e.g. −15 move speed).
+
+Big (66%), cardinal and burst (39%) swing ±10–20 points between batches on 20–35 players each,
+so they're treated as noise. Shield max has come in low every batch, which matches the shield
+caveat above.

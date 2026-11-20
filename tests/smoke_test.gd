@@ -791,6 +791,10 @@ func _check_cpu_perception(p1: player, p2: player, brain: CpuBrain) -> void:
 	foreign.queue_free()
 	own.queue_free()
 
+	# P1 only just let go of D; a process frame doesn't guarantee a physics
+	# tick has zeroed its velocity yet, and lead would then aim off its body.
+	await get_tree().physics_frame
+	await get_tree().physics_frame
 	# Shots leave the bow on the AimPivot, 8 px above the feet, so the aim line
 	# must run from there to the target's hitbox. P1 stands still, so even with
 	# lead the line has to pass through P1's body centre.
@@ -799,11 +803,63 @@ func _check_cpu_perception(p1: player, p2: player, brain: CpuBrain) -> void:
 	var aim := brain._lead_aim(p1)
 	var off_line := absf((body - from).cross(aim))
 	check(p1.velocity == Vector2.ZERO and off_line < 0.5,
-		"the CPU aims from its bow at the target's body (%.2f px off)" % off_line)
+		"the CPU aims from its bow at the target's body (%.2f px off, P1 velocity %s)" % [off_line, p1.velocity])
+
+## The bow holds two modes (#35). A third would push out the oldest, so the
+## label says so and the CPU stops treating it as a must-take pickup.
+func _check_full_bow(p2: player, brain: CpuBrain) -> void:
+	var bow = p2.current_weapon
+	var saved_modes: Array[String] = bow.bullet_modes.duplicate()
+	var saved_rng := brain._rng.state  # scoring rolls jitter; keep the run deterministic
+	var big := BulletUpgrade.create("big")
+
+	bow.bullet_modes.assign(["spread"])
+	check(big.description_for(p2) == "Big Bullets" and big.replaced_mode(p2) == "",
+		"with room on the bow, the bullet upgrade label is just its name")
+	check(brain._upgrade_score(big) >= CpuBrain.BULLET_UPGRADE_BONUS,
+		"with room on the bow, the CPU always takes the bullet upgrade")
+
+	bow.bullet_modes.assign(["spread", "bounce"])
+	check(big.description_for(p2) == "Big Bullets\n(replaces Spread Shot)",
+		"with a full bow, the label names the mode it replaces: '%s'" % big.description_for(p2).replace("\n", " "))
+	check(brain._upgrade_score(big) < CpuBrain.BULLET_UPGRADE_BONUS,
+		"with a full bow, the CPU weighs the bullet upgrade like a stat upgrade")
+
+	big.free()
+	bow.bullet_modes.assign(saved_modes)
+	brain._rng.state = saved_rng
+
+## Values changed on purpose by the #35 balance pass (see docs/balance.md).
+func _check_balance_tuning(p2: player, brain: CpuBrain) -> void:
+	var saved_max: int = p2.max_health
+	var hm: Upgrade = load("res://scenes/upgrades/health_max.tscn").instantiate()
+	p2.max_health = player.STARTING_MAX_HEALTH
+	var offered_at_start := hm.is_available(p2)
+	p2.max_health = player.STARTING_MAX_HEALTH + 1
+	check(player.STARTING_MAX_HEALTH == 4 and offered_at_start and not hm.is_available(p2),
+		"players start with 4 hearts and max health caps at 5 (one pickup)")
+	p2.max_health = saved_max
+	hm.free()
+
+	var bow = p2.current_weapon
+	var saved_modes: Array[String] = bow.bullet_modes.duplicate()
+	var bullet = load("res://scenes/player/player_bullet.tscn").instantiate()
+	bullet.apply_modes(["bounce"] as Array[String], p2)
+	bow.bullet_modes.assign(["bounce"])
+	check(is_equal_approx(bullet.speed, 250.0) and is_equal_approx(brain._bullet_speed(), bullet.speed),
+		"bouncing bullets fly at 250 and the CPU leads its shots for that speed")
+	bow.bullet_modes.assign(saved_modes)
+	bullet.free()
+
+	var hard: CpuProfile = load("res://resources/cpu/hard.tres")
+	check(hard.upgrade_weights.get("shield_max") == 2.0 and hard.upgrade_weights.get("shield_regen") == 2.0,
+		"Hard weighs the shield upgrades at 2")
 
 func _test_cpu_dungeon(p1: player, p2: player, brain: CpuBrain) -> void:
 	print("Solo dungeon: the CPU plays its own world")
-	_check_cpu_perception(p1, p2, brain)
+	await _check_cpu_perception(p1, p2, brain)
+	_check_full_bow(p2, brain)
+	_check_balance_tuning(p2, brain)
 	var rm2 = room_manager_for(p2)
 	var limit := 30.0
 	var waited := 0.0

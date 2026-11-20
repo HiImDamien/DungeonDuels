@@ -17,7 +17,7 @@ preferred_range = 100.0
 upgrade_weights = {
 "attack_rate": 3.0,
 "health_max": 2.5,
-"shield_max": 1.5,
-"shield_regen": 1.5,
+"shield_max": 2.0,
+"shield_regen": 2.0,
 "speed_boost": 1.0
 }
