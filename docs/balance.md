@@ -51,6 +51,19 @@ To log a new field, add it in `log_match_result` and update the table above.
 
 ## Summarizing it
 
+`tests/balance_summary.sh` prints, for every upgrade and bullet mode, how many players took it
+and their win rate, plus win rates for stacking a stat upgrade 2+ times:
+
+```bash
+tests/balance_summary.sh                     # the CPU vs CPU log
+tests/balance_summary.sh path/to/log.jsonl   # any log (several files are merged)
+```
+
+A player counts once per match, so 20 matches = 40 players. A win rate from fewer than about 10
+players is mostly noise.
+
+One-off `jq` queries:
+
 ```bash
 cd ~/Library/Application\ Support/Godot/app_userdata/DungeonDuels
 ```
@@ -88,3 +101,9 @@ GODOT=/Applications/Godot.app/Contents/MacOS/Godot
   `weapon.gd` times its fire rate with the wall clock, so the CPUs would barely shoot.
 - A final battle with no winner after 120 s is skipped and not logged.
 - It sets `PlayerDevices.cpu_difficulty_override` for each side; normal play leaves that empty.
+- To collect data faster, run several runners at once, each with its own `--log`, and pass all
+  the files to `tests/balance_summary.sh`. Four at once worked fine on a MacBook.
+- **For upgrade balance, use Medium vs Medium.** Medium has no `upgrade_weights`, so each CPU
+  takes one of the two offered stat upgrades at random, and the bullet mode is random too (the
+  room offers one and the CPU always takes it). With equal skill on both sides, the upgrades are
+  what differs between winner and loser.
