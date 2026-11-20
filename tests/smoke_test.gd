@@ -833,10 +833,11 @@ func _check_full_bow(p2: player, brain: CpuBrain) -> void:
 func _check_balance_tuning(p2: player, brain: CpuBrain) -> void:
 	var saved_max: int = p2.max_health
 	var hm: Upgrade = load("res://scenes/upgrades/health_max.tscn").instantiate()
-	p2.max_health = 3
-	var offered_at_3 := hm.is_available(p2)
-	p2.max_health = 4
-	check(offered_at_3 and not hm.is_available(p2), "max health caps at 4 hearts (one pickup)")
+	p2.max_health = player.STARTING_MAX_HEALTH
+	var offered_at_start := hm.is_available(p2)
+	p2.max_health = player.STARTING_MAX_HEALTH + 1
+	check(player.STARTING_MAX_HEALTH == 4 and offered_at_start and not hm.is_available(p2),
+		"players start with 4 hearts and max health caps at 5 (one pickup)")
 	p2.max_health = saved_max
 	hm.free()
 

@@ -18,7 +18,7 @@ var input: PlayerInput
 var last_aim = Vector2.RIGHT
 var speed: float = 75.0
 const INVINCIBLE_TIME = 3
-const STARTING_MAX_HEALTH = 3
+const STARTING_MAX_HEALTH = 4  # #35: was 3, so one health pickup is +25% hits, not +33%
 var max_health: int = STARTING_MAX_HEALTH:
 	set(value):
 		max_health = value
