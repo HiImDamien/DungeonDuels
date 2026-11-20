@@ -1,8 +1,9 @@
 extends Upgrade
 class_name health_max
 
-## Hard cap: players can never exceed this many hearts.
-const MAX_HEARTS: int = 5
+## Hard cap: players can never exceed this many hearts. One pickup from the
+## starting 3 (#35: two pickups won 90% of CPU duels).
+const MAX_HEARTS: int = 4
 
 func _init() -> void:
 	description = "+1 Max\nHealth"

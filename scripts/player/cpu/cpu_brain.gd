@@ -22,8 +22,9 @@ const PROFILES := {
 }
 const DEFAULT_DIFFICULTY := "medium"
 
-## Matches player_bullet.gd's speed; used to lead shots.
+## Matches player_bullet.gd's speed; used to lead shots (see _bullet_speed()).
 const BULLET_SPEED := 200.0
+const PlayerBulletScript := preload("res://scripts/player/player_bullet.gd")
 ## How far ahead (seconds) a bullet's path is checked for a near miss.
 const THREAT_LOOKAHEAD := 0.6
 ## Keep the shield up this long after the last threat, so it doesn't flicker.
@@ -362,10 +363,17 @@ func _strafe(to_target: Vector2) -> Vector2:
 func _lead_aim(target: Node2D) -> Vector2:
 	var from := _player.aim_pivot.global_position
 	var body := _body_center(target)
-	var flight_time := from.distance_to(body) / BULLET_SPEED
+	var flight_time := from.distance_to(body) / _bullet_speed()
 	var velocity: Vector2 = target.get("velocity") if "velocity" in target else Vector2.ZERO
 	var predicted := body + velocity * flight_time * profile.lead_accuracy
 	return (predicted - from).normalized()
+
+## How fast our own shots fly: bounce makes them faster (#35).
+func _bullet_speed() -> float:
+	var bow = _player.current_weapon
+	if bow != null and bow.has_method("has_bullet_mode") and bow.has_bullet_mode("bounce"):
+		return BULLET_SPEED * PlayerBulletScript.BOUNCE_SPEED_MULTIPLIER
+	return BULLET_SPEED
 
 ## Where a character's hitbox is: its CollisionShape2D sits off the origin
 ## (players 8 px up, slimes 2 px down, bats 7 px up).

@@ -5,6 +5,8 @@ var direction: Vector2  = Vector2.RIGHT
 var damage: int         = 1
 var shooter             = null
 
+const BOUNCE_SPEED_MULTIPLIER := 1.25
+
 # ── Bullet modifier state ─────────────────────────────────────────────────────
 var bounces_left: int   = 0
 var _is_tracking: bool  = false
@@ -20,6 +22,9 @@ func apply_modes(modes: Array[String], owning_player) -> void:
 	if "bounce" in modes:
 		_is_bounce   = true
 		bounces_left = 3
+		# The duel arena is open, so bounces rarely land; faster shots make
+		# the pick worth it anyway (#35: bounce won 35%).
+		speed *= BOUNCE_SPEED_MULTIPLIER
 	if "big" in modes:
 		scale  = Vector2(2.2, 2.2)
 		damage = 2

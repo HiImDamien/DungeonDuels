@@ -25,6 +25,10 @@ const BURST_INTERVAL := 0.08   # seconds between each shot in the burst
 
 const MAX_BULLET_MODES := 2
 
+## Angle of spread's outer bullets either side of the aim. Wide enough that
+## a sloppy aim can fall between them at duel range (#35: 15° won 69%).
+const SPREAD_ANGLE_DEG := 22.0
+
 var bullet_modes: Array[String] = []
 var _burst_firing: bool = false   # prevents overlapping bursts
 
@@ -97,5 +101,5 @@ func _spawn_bullet(dir: Vector2) -> void:
 	bullet.apply_modes(bullet_modes, owner_player)
 
 func _fire_spread_in_direction(dir: Vector2) -> void:
-	for deg in [-15.0, 0.0, 15.0]:
+	for deg in [-SPREAD_ANGLE_DEG, 0.0, SPREAD_ANGLE_DEG]:
 		_spawn_bullet(dir.rotated(deg_to_rad(deg)))
