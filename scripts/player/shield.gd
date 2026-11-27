@@ -120,6 +120,17 @@ func take_damage(amount: int = 1) -> void:
 	if health <= 0:
 		break_shield()
 
+## The one place that decides what a bullet hitting this shield does (#63).
+## Bullets call it from _on_area_entered and free themselves when it returns
+## true. Any future shield behavior (perfect block, absorb) branches in here,
+## never in the bullet scripts. Own shots pass through: the shield is a direct
+## child of the player, who is the bullet's shooter.
+func try_block(bullet) -> bool:
+	if not is_active or bullet.shooter == get_parent():
+		return false
+	take_damage(bullet.damage)
+	return true
+
 func break_shield() -> void:
 	is_broken = true
 	on_cooldown = true

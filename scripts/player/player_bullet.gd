@@ -70,10 +70,7 @@ func _on_body_entered(body: Node2D) -> void:
 		_handle_wall_hit()
 
 func _on_area_entered(area: Area2D) -> void:
-	if area.is_in_group("shield") and area.is_active:
-		if area.get_parent() == shooter:
-			return
-		area.take_damage(damage)
+	if area is Shield and area.try_block(self):
 		queue_free()
 		return
 	if area.is_in_group("walls"):
