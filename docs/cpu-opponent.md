@@ -72,6 +72,10 @@ func is_shielding() -> bool
   It then checks whether the bullet's path passes within `dodge_radius` in the next 0.6 s
   (`THREAT_LOOKAHEAD`). Each bullet gets one `dodge_skill` roll (react at all?) and one
   `shield_skill` roll (shield or sidestep). A sidestep is held for 0.25 s (`DODGE_COMMIT`).
+  The first time it shields a bullet it also rolls `parry_skill`: on a pass it faces the bullet
+  square on (a perfect block, #58), otherwise it turns the shield `OFF_CENTER_DEG` (33°) to one
+  side so the hit lands outside the perfect zone and costs a point. Off-centre shots can spoil a
+  parry too, so the real parry rate is a little under `parry_skill`.
 - Threats are checked every frame (a handful of bullets, so it's cheap). Strafe direction, aim
   error and which enemy to fight wait for the next decision.
 - **Human-looking movement** (#33 playtest: the first version snapped back and forth and reacted
@@ -124,6 +128,7 @@ and it slots into the steering step without changing the rest.
 | `aim_track_rate` (rad/s, 0 = instant) | 2 | 0 | 0 |
 | `lead_accuracy` (0–1) | 0.0 | 0.5 | 1.0 |
 | `shield_skill` (chance to shield a hit) | 0.1 | 0.4 | 0.95 |
+| `parry_skill` (chance a shielded hit is a perfect block) | 0.1 | 0.35 | 0.7 |
 | `dodge_radius` (px) | 8 | 14 | 24 |
 | `dodge_skill` (chance to react to a bullet) | 0.4 | 0.75 | 1.0 |
 | `turn_rate` (rad/s, 0 = instant) | 4 | 7 | 0 |

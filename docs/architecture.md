@@ -49,6 +49,19 @@ modes), `axe_weapon.tscn` (a melee swing) and `weapon_pickup.tscn`. Nothing plac
 pickup yet. The `resources/*_data.tres` `WeaponData` files (bow, axe, sword) aren't referenced by
 any code.
 
+## Shields
+
+`scripts/player/shield.gd` (`Shield`, a child of each player) is raised with the shield button and
+faces the aim. **`Shield.try_block(bullet)` is the only code that decides a block** (#63): both
+bullet scripts call it from `_on_area_entered` and free themselves when it returns true, so any new
+shield behavior goes in there. It skips the owner's own shots. A hit within `PERFECT_HALF_WIDTH` of
+the centre line, measured in shield-local space (`to_local()` undoes the shrink-with-health scale),
+is a **perfect block** (#58): no cost, and a fresh `player_bullet` goes back along the aim, owned by
+the blocker, with the original damage, no modes and `reflected = true`. A reflected bullet is always
+a normal block, so a rally ends after one return. Feedback is a flash, `PerfectSound` (a plain
+`AudioStreamPlayer`, because a 2D one would be silent in our SubViewports, which don't enable the 2D
+audio listener) and a stripe drawn in `_draw()` (the sprite has `show_behind_parent`).
+
 ## Physics layers
 
 Named in project.godot `[layer_names]` and mirrored as constants in `scripts/physics_layers.gd`.

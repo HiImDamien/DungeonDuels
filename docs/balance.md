@@ -11,8 +11,8 @@ the log never has half records.
 
 ```json
 {"time":"2026-11-18T18:22:02Z","version":"dev","duration_s":26.8,"winner":1,
- "p1":{"device":"keyboard","picks":["health_max","shield_regen","cardinal"],"rooms_cleared":3,"kills":14,"deaths":1},
- "p2":{"device":"joypad","picks":["shield_regen"],"rooms_cleared":1,"kills":6,"deaths":1}}
+ "p1":{"device":"keyboard","picks":["health_max","shield_regen","cardinal"],"rooms_cleared":3,"kills":14,"deaths":1,"perfect_blocks":2},
+ "p2":{"device":"joypad","picks":["shield_regen"],"rooms_cleared":1,"kills":6,"deaths":1,"perfect_blocks":0}}
 ```
 
 | Field | Meaning |
@@ -24,15 +24,17 @@ the log never has half records.
 | `device` | `keyboard`, `joypad` or `cpu` (the solo opponent). No ids. `none` = an empty side, `unassigned` = `game.tscn` run straight from the editor. |
 | `picks` | Upgrades in the order they were taken. Stat upgrades by `class_name` (`attack_rate`, `speed_boost`, `health_max`, `shield_regen`, `shield_max`), bullet upgrades by mode (`spread`, `bounce`, `big`, `tracking`, `cardinal`, `burst`). |
 | `rooms_cleared`, `kills`, `deaths` | Dungeon only. A death there means a respawn. |
+| `perfect_blocks` | Centre-hit blocks that reflected a bullet (#58), dungeon and final battle together. |
 | `difficulty` | Only on a `cpu` player: `easy`, `medium` or `hard`. |
 
 ## How it's collected
 
-`GameState` (`scripts/game/game_state.gd`) keeps `picks`, `rooms_cleared` and `deaths` per player,
+`GameState` (`scripts/game/game_state.gd`) keeps `picks`, `rooms_cleared`, `deaths` and `perfect_blocks` per player,
 and `start_match()` resets them.
 - `Upgrade._on_body_entered` calls `record_pick(index, pick_id())`.
 - `RoomManager._on_room_cleared` calls `record_room_cleared`.
 - `game.gd` watches each player's `is_dead` and calls `record_death` when it flips on.
+- `Shield._perfect_block` calls `record_perfect_block`.
 - `final_battle.gd` calls `log_match_result(winner)`, which builds the record and hands it to
   `BalanceLog.append` (`scripts/game/balance_log.gd`). Only the first call per match writes.
 
