@@ -5,6 +5,8 @@ var direction: Vector2 = Vector2.RIGHT
 # Same fields as player_bullet so Shield.try_block() treats both alike (#63).
 var damage: int = 1
 var shooter = null
+# Always false here (only player_bullets get reflected); kept so both bullets look alike to Shield.try_block() (#58).
+var reflected: bool = false
 
 func _ready() -> void:
 	add_to_group("enemy_bullet")  # CpuBrain looks for incoming shots

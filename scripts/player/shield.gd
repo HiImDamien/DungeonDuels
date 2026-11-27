@@ -16,6 +16,22 @@ const POLYGON_DISTANCE := 14.0
 # Captured from the scene in _ready() so we never hardcode the offset.
 var _base_position := Vector2.ZERO
 
+# ── Perfect block (#58) ───────────────────────────────────────────────────────
+# A hit within this many units of the shield's centre line (shield-local y) is a
+# perfect block: free, and the bullet goes back out along the aim. Local space
+# undoes the shrink-with-health scale, so the zone is always the same fraction
+# of the shield (the collider spans y ±16, so 5 is about its centre third).
+const PERFECT_HALF_WIDTH := 5.0
+# Shield-local x of the stripe that marks the perfect zone (the flat face is at 18).
+const STRIPE_X := 16.5
+const STRIPE_COLOR := Color(1.0, 0.95, 0.55, 0.9)
+const FLASH_COLOR := Color(2.2, 2.2, 1.4)  # over 1.0 = brighter than the sprite
+const FLASH_TIME := 0.2
+const REFLECTED_BULLET := preload("res://scenes/player/player_bullet.tscn")
+
+@onready var perfect_sound: AudioStreamPlayer = $PerfectSound
+var _flash_tween: Tween
+
 # Few, heavy points (#29): every hit visibly shrinks the shield, it can really
 # break, and recharge is slow enough that Shield Regen is worth taking.
 @export var max_health := 4:
@@ -122,14 +138,59 @@ func take_damage(amount: int = 1) -> void:
 
 ## The one place that decides what a bullet hitting this shield does (#63).
 ## Bullets call it from _on_area_entered and free themselves when it returns
-## true. Any future shield behavior (perfect block, absorb) branches in here,
-## never in the bullet scripts. Own shots pass through: the shield is a direct
-## child of the player, who is the bullet's shooter.
+## true. Any future shield behavior (absorb) branches in here, never in the
+## bullet scripts. Own shots pass through: the shield is a direct child of the
+## player, who is the bullet's shooter.
 func try_block(bullet) -> bool:
 	if not is_active or bullet.shooter == get_parent():
 		return false
+	# A reflected bullet is always a normal block, so a rally ends after one return.
+	if not bullet.reflected and is_perfect_hit(bullet.global_position):
+		_perfect_block(bullet)
+		return true
 	take_damage(bullet.damage)
 	return true
+
+## True when a point (global coordinates) is inside the centre stripe.
+## to_local() undoes position, rotation and scale, so this works at any aim
+## and any shield size.
+func is_perfect_hit(global_point: Vector2) -> bool:
+	return absf(to_local(global_point).y) <= PERFECT_HALF_WIDTH
+
+## Costs nothing and sends a fresh bullet back along the aim, owned by the
+## blocker, with the original damage but no bullet modes (#58).
+func _perfect_block(bullet) -> void:
+	var blocker := get_parent()
+	var shot = REFLECTED_BULLET.instantiate()
+	shot.position  = bullet.position  # same parent, so local positions match
+	shot.direction = aim_direction
+	shot.shooter   = blocker
+	shot.damage    = bullet.damage
+	shot.reflected = true
+	var weapon = blocker.get("current_weapon")
+	if weapon != null:
+		shot.modulate = weapon.bullet_color
+	# Same parent as the blocked bullet, so it stays in the right world. Deferred:
+	# this runs inside a physics callback, where adding a body is not allowed.
+	bullet.get_parent().add_child.call_deferred(shot)
+	_flash()
+	perfect_sound.play()
+	var index = blocker.get("player_index")
+	if index != null:
+		GameState.record_perfect_block(index)
+
+func _flash() -> void:
+	if _flash_tween:
+		_flash_tween.kill()
+	modulate = FLASH_COLOR
+	_flash_tween = create_tween()
+	_flash_tween.tween_property(self, "modulate", Color.WHITE, FLASH_TIME)
+
+## Marks the perfect zone. Drawn in shield-local space, so it turns and shrinks
+## with the shield. The Sprite2D has show_behind_parent on, so this is on top.
+func _draw() -> void:
+	draw_line(Vector2(STRIPE_X, -PERFECT_HALF_WIDTH), Vector2(STRIPE_X, PERFECT_HALF_WIDTH),
+		STRIPE_COLOR, 1.0)
 
 func break_shield() -> void:
 	is_broken = true
