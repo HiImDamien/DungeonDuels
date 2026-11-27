@@ -142,6 +142,23 @@ func _test_shield(p: player) -> void:
 	check(p.health == hp and shield.health == shield.max_health - 1,
 		"a raised shield takes an enemy bullet for the player and loses one point (hp %d, shield %d)"
 		% [p.health, shield.health])
+
+	# The shield, not the bullet, decides the block (#63). Never added to the
+	# tree, so no collisions: this calls try_block directly.
+	var shot = load("res://scenes/player/player_bullet.tscn").instantiate()
+	shot.damage = 1
+	var before := shield.health
+	var blocked: bool = shield.try_block(shot)
+	check(blocked and shield.health == before - 1,
+		"Shield.try_block() blocks another player's bullet for one point (%d → %d)" % [before, shield.health])
+	shot.shooter = p
+	before = shield.health
+	blocked = shield.try_block(shot)
+	check(not blocked and shield.health == before,
+		"Shield.try_block() lets the shield owner's own bullet through for free")
+	shot.free()
+	shield.health = shield.max_health
+
 	p.input = DeviceInput.new(p._input_prefix)
 	await wait(0.1)
 	check(not shield.is_active, "letting go of the shield lowers it")
