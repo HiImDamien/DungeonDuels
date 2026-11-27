@@ -45,11 +45,15 @@ Phases run in order. Within a phase, the order below follows the dependencies.
 |---|---|---|---|
 | #38 | Weapon pickups and the axe (melee) | M | — |
 | #39 | Heavy weapon: slow, high damage | M | #38 |
-| #40 | Reflect shield (+ shield-mode framework) | M | #29 |
-| #41 | Absorb shield | M | #40 |
+| #63 | Shield decides blocks: `Shield.try_block()` | S | #29 |
+| #58 | Perfect block: a center hit costs nothing and reflects | M | #63 |
+| #64 | Balance the parry: discourage turtling | S–M | #58 |
+| #41 | Absorb shield (deferred) | M | #63 |
 | #42 | Boomerang and pierce bullet modes | M | — |
-| #55 | Slime contact damage and a shield bash | M | #29 |
-| #58 | Shield parry window and center sweet spot | M | #29 |
+
+Shield council, Nov 27 2026: #40 (reflect shield) was closed because reflecting became what a perfect
+block does (#58), so no shield-mode framework is needed. Block logic lives only in
+`Shield.try_block()` (#63). #41 is deferred until after #64, and #55 is parked (see below).
 
 ### 5. More to fight
 | # | Issue | Size | Depends on |
@@ -63,10 +67,11 @@ Phases run in order. Within a phase, the order below follows the dependencies.
 | #49 | New final battle arenas | M | #48 |
 | #50 | Characters as starting loadouts | M | #38, #39 |
 
-## Parked (no issues; revisit if the identity shifts toward a roguelite)
+## Parked (revisit if the identity shifts toward a roguelite; only #55 has an issue)
 
 - Achievements (local, `user://`, IndexedDB on web)
 - Unique character abilities beyond loadouts
 - Dungeon themes and maps beyond new arenas
 - More than one extra boss
 - More projectile-pattern enemies beyond the mortar and wisp
+- Slime contact damage and a shield bash (#55): revisit together with melee weapons (#38)
