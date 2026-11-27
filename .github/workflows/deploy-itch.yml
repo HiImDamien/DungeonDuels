@@ -1,8 +1,11 @@
 # Tests, exports and deploys the Web build to itch.io.
 #
 #   pull_request  -> smoke test + export only (nothing is published)
-#   push to main  -> smoke test + export, then butler push to itch.io
-#   manual run    -> same as push to main (Actions tab > Deploy to itch.io > Run workflow)
+#   push to main  -> smoke test + export only (nothing is published)
+#   push a v* tag -> smoke test + export, then butler push to itch.io
+#   manual run    -> same as a tag (Actions tab > Deploy to itch.io > Run workflow)
+#
+# To release:  gh release create v0.4.0 --generate-notes -R HiImDamien/DungeonDuels
 #
 # Needs one repository secret: BUTLER_API_KEY (itch.io > Settings > API keys).
 name: Deploy to itch.io
@@ -10,6 +13,7 @@ name: Deploy to itch.io
 on:
   push:
     branches: [main]
+    tags: ['v*']
   pull_request:
   workflow_dispatch:
 
@@ -65,7 +69,7 @@ jobs:
 
   deploy:
     needs: build
-    if: github.event_name != 'pull_request'
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     concurrency: itch-deploy
     steps:
@@ -85,5 +89,10 @@ jobs:
         env:
           BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
         run: |
-          butler/butler push build/web "$ITCH_TARGET" \
-            --userversion "$(date -u +%Y.%m.%d)-${GITHUB_SHA::7}"
+          # A tag release shows as "v0.4.0" on itch; a manual run as "<date>-<sha>".
+          if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
+            version="$GITHUB_REF_NAME"
+          else
+            version="$(date -u +%Y.%m.%d)-${GITHUB_SHA::7}"
+          fi
+          butler/butler push build/web "$ITCH_TARGET" --userversion "$version"
