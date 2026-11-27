@@ -9,6 +9,7 @@ reaction_time = 0.3
 aim_error_deg = 12.0
 lead_accuracy = 0.5
 shield_skill = 0.4
+parry_skill = 0.35
 dodge_radius = 14.0
 preferred_range = 80.0
 dodge_skill = 0.75
