@@ -55,6 +55,8 @@ var picks := {1: [], 2: []}
 var rooms_cleared := {1: 0, 2: 0}
 ## Dungeon deaths (respawns). The final battle's result is the winner instead.
 var deaths := {1: 0, 2: 0}
+## Perfect blocks (#58), dungeon and final battle together.
+var perfect_blocks := {1: 0, 2: 0}
 ## Seconds actually played this match. Only grows in _process, which stops
 ## while the tree is paused, so pauses don't count.
 var match_elapsed := 0.0
@@ -71,6 +73,9 @@ func record_room_cleared(player_index: int) -> void:
 
 func record_death(player_index: int) -> void:
 	deaths[player_index] += 1
+
+func record_perfect_block(player_index: int) -> void:
+	perfect_blocks[player_index] += 1
 
 ## Writes this match's balance record. Only the first call per match writes, so
 ## nothing can log a match twice. Quitting mid-match never gets here.
@@ -91,6 +96,7 @@ func log_match_result(winner: int) -> void:
 			"rooms_cleared": rooms_cleared[index],
 			"kills": player_stats[index].kills,
 			"deaths": deaths[index],
+			"perfect_blocks": perfect_blocks[index],
 		}
 		if record["p%d" % index].device == PlayerDevices.CPU:
 			record["p%d" % index]["difficulty"] = PlayerDevices.cpu_difficulty_for(index)
@@ -118,6 +124,7 @@ func start_match() -> void:
 		picks[index] = []
 		rooms_cleared[index] = 0
 		deaths[index] = 0
+		perfect_blocks[index] = 0
 	match_elapsed = 0.0
 	_match_logged = false
 	time_remaining = MATCH_DURATION
