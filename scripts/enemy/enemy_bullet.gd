@@ -2,6 +2,9 @@ extends Area2D
 
 var speed: float = 200
 var direction: Vector2 = Vector2.RIGHT
+# Same fields as player_bullet so Shield.try_block() treats both alike (#63).
+var damage: int = 1
+var shooter = null
 
 func _ready() -> void:
 	add_to_group("enemy_bullet")  # CpuBrain looks for incoming shots
@@ -17,9 +20,8 @@ func _on_body_entered(body: Node2D) -> void:
 		queue_free()
 
 func _on_area_entered(area: Area2D) -> void:
-	if area.is_in_group("shield"):
-		if area.is_active:
-			area.take_damage(1)
-			queue_free()
-	elif area.is_in_group("walls"):
+	if area is Shield and area.try_block(self):
+		queue_free()
+		return
+	if area.is_in_group("walls"):
 		queue_free()
