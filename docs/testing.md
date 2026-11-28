@@ -22,7 +22,8 @@ GODOT=/path/to/Godot tests/run_smoke_test.sh  # if `godot` isn't on PATH
 (device 1) as P2. The rematch joins controllers 1 and 2.
 
 It reaches into private fields (`_root`, `_messages`, `_offered_upgrades`, `_input_prefix`) and
-`CpuBrain`'s perception helpers (`_my_enemies()`, `_bullets_in_world()`) and `_lead_aim()`, so renaming those breaks it. It also points `BalanceLog.path` at a throwaway file, so test runs
+`CpuBrain`'s perception helpers (`_my_enemies()`, `_bullets_in_world()`), `_lead_aim()`,
+`_bullet_speed()` and `_shield_aim()`, so renaming those breaks it. It also points `BalanceLog.path` at a throwaway file, so test runs
 never write to the real balance log. For a new behavior, add `check(...)` calls in the matching section
 rather than writing a separate test.
 

@@ -10,6 +10,7 @@ aim_error_deg = 6.0
 aim_track_rate = 2.0
 lead_accuracy = 0.0
 shield_skill = 0.1
+parry_skill = 0.1
 dodge_radius = 8.0
 dodge_skill = 0.4
 turn_rate = 4.0

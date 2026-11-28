@@ -50,6 +50,11 @@ const UPGRADE_JITTER := 0.1
 ## player's body radius (5) plus the biggest bullet's (4). Only those are worth
 ## the shield; near misses are sidestepped so the shield isn't worn down.
 const SHIELD_HIT_RADIUS := 9.0
+## When the parry_skill roll fails, the shield turns this far off the bullet's
+## path so the shot lands outside the perfect zone (#58). Turning the shield by
+## θ moves the hit to shield-local y ≈ face_x · tan θ ≈ 16 · tan 33° ≈ 10:
+## past Shield.PERFECT_HALF_WIDTH (5) but well inside the shield (16).
+const OFF_CENTER_DEG := 33.0
 
 @export var profile: CpuProfile
 ## 0 = random each match. Anything else makes its choices repeatable (the
@@ -156,7 +161,7 @@ func _physics_process(delta: float) -> void:
 	elif threat != null:
 		if _seen[threat.get_instance_id()].shield and _threat_miss <= SHIELD_HIT_RADIUS \
 				and _shield_usable():
-			_shield_dir = -threat.direction
+			_shield_dir = _shield_aim(threat, _seen[threat.get_instance_id()])
 			_shield_until = _clock + SHIELD_LINGER
 		else:
 			_dodge_dir = _dodge(threat)
@@ -308,6 +313,7 @@ func _best_upgrade() -> Upgrade:
 ## The incoming bullet that will reach us soonest, counting only bullets seen
 ## for at least reaction_time. Each bullet gets one roll for whether it
 ## reacts at all (dodge_skill) and one for shield-or-dodge (shield_skill).
+## _shield_aim adds a parry_skill roll the first time it shields one.
 func _most_urgent_threat() -> Area2D:
 	_threat_miss = INF
 	var alive := {}
@@ -341,6 +347,20 @@ func _most_urgent_threat() -> Area2D:
 		if not alive.has(id):
 			_seen.erase(id)
 	return best
+
+## Where to face the shield against a threat. Square on (the bullet hits the
+## perfect zone and is reflected) when the parry roll passed, otherwise turned
+## OFF_CENTER_DEG to one side, so it's a normal block that costs a point.
+## `roll` is the bullet's _seen entry. The parry roll is made once, here, so
+## dodged bullets don't use up random numbers.
+func _shield_aim(threat: Area2D, roll: Dictionary) -> Vector2:
+	if not roll.has("parry"):
+		roll.parry = _rng.randf() < profile.parry_skill
+		roll.side = 1.0 if _rng.randf() < 0.5 else -1.0
+	var square_on: Vector2 = -threat.direction
+	if roll.parry:
+		return square_on
+	return square_on.rotated(deg_to_rad(OFF_CENTER_DEG) * roll.side)
 
 func _shield_usable() -> bool:
 	return not _player.shield.is_broken and not _player.shield.on_cooldown

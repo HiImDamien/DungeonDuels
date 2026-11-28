@@ -19,6 +19,9 @@ class_name CpuProfile
 @export_range(0.0, 1.0) var lead_accuracy: float = 0.5
 ## Chance (per incoming bullet) to raise the shield instead of sidestepping.
 @export_range(0.0, 1.0) var shield_skill: float = 0.4
+## Chance (per shielded bullet) to face it square on for a perfect block (#58).
+## When it fails, the shield is turned so the hit lands off centre instead.
+@export_range(0.0, 1.0) var parry_skill: float = 0.35
 ## A bullet that will pass closer than this (px) counts as a threat.
 @export var dodge_radius: float = 14.0
 ## Chance (per incoming bullet) that it reacts at all, by dodging or shielding.

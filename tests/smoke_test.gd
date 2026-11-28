@@ -114,6 +114,79 @@ func _test_keyboard_shooting(p: player) -> void:
 	await hold_keys([KEY_E], 0.1)
 	check(weapon.last_fire_time == fired_at, "E no longer shoots")
 
+## Bullets of `parent` owned by `shooter` that came from a perfect block.
+func _reflected_bullets(parent: Node, shooter: Node) -> Array:
+	return parent.get_children().filter(func(n):
+		return n.is_in_group("player_bullet") and n.shooter == shooter and n.reflected)
+
+## Fires a bullet of `scene` straight left at the shield's centre line, from
+## 24 px to its right.
+func _shoot_at_shield(p: player, scene: PackedScene, reflected: bool = false) -> Node:
+	var b = scene.instantiate()
+	b.reflected = reflected
+	b.direction = Vector2.LEFT
+	p.get_parent().add_child(b)
+	b.global_position = p.shield.global_position + Vector2(24, 0)
+	return b
+
+## Perfect block (#58): a centre hit is free and comes back out along the aim,
+## owned by the blocker; a reflected bullet can't be reflected again; and the
+## CPU's failed parry roll turns the shield so the hit lands off centre.
+## Expects P1 holding the shield to the right through a CpuInput.
+func _test_perfect_block(p: player) -> void:
+	var shield := p.shield
+	var world := p.get_parent()
+	shield.health = shield.max_health
+	await wait(0.05)
+	var before_count: int = GameState.perfect_blocks[1]
+	_shoot_at_shield(p, Enemy.ENEMY_BULLET)
+	await wait(0.15)
+	var reflected := _reflected_bullets(world, p)
+	check(shield.health == shield.max_health and reflected.size() == 1
+		and reflected[0].direction.is_equal_approx(shield.aim_direction)
+		and GameState.perfect_blocks[1] == before_count + 1,
+		"a centre hit is a perfect block: free (shield %d/%d), sent back along the aim, owned by the blocker, counted"
+		% [shield.health, shield.max_health])
+	check(shield.is_perfect_hit(shield.to_global(Vector2(18, 0)))
+		and not shield.is_perfect_hit(shield.to_global(Vector2(18, 8))),
+		"the perfect zone is the shield's centre line, not its edge")
+	for b in reflected:
+		b.free()
+
+	# No second reflect: a bullet already sent back is a normal block.
+	_shoot_at_shield(p, load("res://scenes/player/player_bullet.tscn"), true)
+	await wait(0.15)
+	check(shield.health == shield.max_health - 1 and _reflected_bullets(world, p).is_empty(),
+		"a reflected bullet hitting the centre is a normal block (costs 1, no second reflect)")
+
+	# The CPU's shield aim when its parry roll fails: still a block, not perfect.
+	shield.health = shield.max_health
+	var brain := CpuBrain.new()
+	var probe = Enemy.ENEMY_BULLET.instantiate()
+	probe.direction = Vector2.LEFT
+	var square: Vector2 = brain._shield_aim(probe, {"parry": true, "side": 1.0})
+	var off: Vector2 = brain._shield_aim(probe, {"parry": false, "side": 1.0})
+	check(square.is_equal_approx(Vector2.RIGHT) and is_equal_approx(rad_to_deg(square.angle_to(off)), CpuBrain.OFF_CENTER_DEG),
+		"the CPU faces a bullet square on to parry, %d° off otherwise" % CpuBrain.OFF_CENTER_DEG)
+	probe.free()
+	brain.free()
+	p.input.aim = off
+	await wait(0.1)
+	before_count = GameState.perfect_blocks[1]
+	_shoot_at_shield(p, Enemy.ENEMY_BULLET)
+	await wait(0.2)
+	check(shield.health == shield.max_health - 1 and GameState.perfect_blocks[1] == before_count
+		and _reflected_bullets(world, p).is_empty(),
+		"a shield turned off centre the CPU's way still blocks, for a point, without parrying")
+	p.input.aim = Vector2.RIGHT
+	await wait(0.05)
+	shield.health = shield.max_health
+
+	var skills := []
+	for d in ["easy", "medium", "hard"]:
+		skills.append((load("res://resources/cpu/%s.tres" % d) as CpuProfile).parry_skill)
+	check(skills == [0.1, 0.35, 0.7], "parry_skill is 0.1 / 0.35 / 0.7 on Easy / Medium / Hard %s" % str(skills))
+
 ## Few, heavy shield points and a Shield Regen you can feel (#29). Runs in a
 ## cleared room so no stray enemy bullets interfere.
 func _test_shield(p: player) -> void:
@@ -134,19 +207,24 @@ func _test_shield(p: player) -> void:
 	p.invincible = false
 	await wait(0.1)
 	var hp := p.health
+	# Edge block: at the player's feet height, 8 px below the shield's centre
+	# line (the shield sits 8 px up), so outside the perfect zone (#58).
 	var bullet = Enemy.ENEMY_BULLET.instantiate()
 	p.get_parent().add_child(bullet)
 	bullet.global_position = p.global_position + Vector2(24, 0)
 	bullet.direction = Vector2.LEFT
 	await wait(0.3)
 	check(p.health == hp and shield.health == shield.max_health - 1,
-		"a raised shield takes an enemy bullet for the player and loses one point (hp %d, shield %d)"
+		"an edge hit on a raised shield takes an enemy bullet for the player and loses one point (hp %d, shield %d)"
 		% [p.health, shield.health])
+
+	await _test_perfect_block(p)
 
 	# The shield, not the bullet, decides the block (#63). Never added to the
 	# tree, so no collisions: this calls try_block directly.
 	var shot = load("res://scenes/player/player_bullet.tscn").instantiate()
 	shot.damage = 1
+	shot.reflected = true  # off the field it has no position; reflected skips the perfect-zone test
 	var before := shield.health
 	var blocked: bool = shield.try_block(shot)
 	check(blocked and shield.health == before - 1,
@@ -1059,10 +1137,13 @@ func _check_balance_log_written(p1_dungeon_kills: int) -> void:
 	check(r1.get("rooms_cleared") == 3.0 and r2.get("rooms_cleared") == 1.0
 		and r1.get("kills") == float(p1_dungeon_kills) and r1.has("deaths") and r2.has("deaths"),
 		"rooms cleared, kills and deaths are logged")
+	check(r1.get("perfect_blocks", 0.0) >= 1.0 and r2.has("perfect_blocks"),
+		"perfect blocks are logged (P1 made %s)" % str(r1.get("perfect_blocks")))
 
 func _check_balance_log_reset() -> void:
 	check(GameState.picks[1].is_empty() and GameState.picks[2].is_empty()
-		and GameState.rooms_cleared[1] == 0 and GameState.deaths[1] == 0,
+		and GameState.rooms_cleared[1] == 0 and GameState.deaths[1] == 0
+		and GameState.perfect_blocks[1] == 0,
 		"the rematch starts with empty pick lists")
 
 func _check_balance_log_after_quit() -> void:

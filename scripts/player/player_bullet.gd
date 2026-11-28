@@ -4,6 +4,8 @@ var speed: float        = 200
 var direction: Vector2  = Vector2.RIGHT
 var damage: int         = 1
 var shooter             = null
+# Set on a bullet sent back by a perfect block (#58); it can't be reflected again.
+var reflected: bool = false
 
 const BOUNCE_SPEED_MULTIPLIER := 1.25
 

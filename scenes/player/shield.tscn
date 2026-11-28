@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" uid="uid://br3ctk6jekssw" path="res://scripts/player/shield.gd" id="1_lsl6d"]
 [ext_resource type="Texture2D" uid="uid://f6qnpojrdflv" path="res://assets/brackeys_platformer_assets/sprites/Shield.png" id="2_m61gp"]
+[ext_resource type="AudioStream" uid="uid://1dljbqiglyns" path="res://assets/brackeys_platformer_assets/sounds/tap.wav" id="3_tap"]
 
 [node name="Shield" type="Area2D" unique_id=74675171 groups=["shield"]]
 collision_layer = 4
@@ -10,6 +11,7 @@ monitoring = false
 script = ExtResource("1_lsl6d")
 
 [node name="Sprite2D" type="Sprite2D" parent="." unique_id=2091620483]
+show_behind_parent = true
 texture = ExtResource("2_m61gp")
 offset = Vector2(-5, 12)
 flip_h = true
@@ -26,6 +28,10 @@ one_shot = true
 
 [node name="RechargeDelayTimer" type="Timer" parent="." unique_id=338639418]
 one_shot = true
+
+[node name="PerfectSound" type="AudioStreamPlayer" parent="."]
+stream = ExtResource("3_tap")
+pitch_scale = 1.6
 
 [connection signal="timeout" from="CooldownTimer" to="." method="_on_cooldown_timer_timeout"]
 [connection signal="timeout" from="RechargeTimer" to="." method="_on_recharge_timer_timeout"]
